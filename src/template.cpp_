@@ -1,0 +1,37 @@
+#include <iostream>
+#include <cstring>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <set>
+#include <climits>
+#include <cfloat>
+#include <cmath>
+#include <map>
+#include <list>
+
+using namespace std;
+
+#define DBG 1
+
+#if DBG
+#define D(x) x;
+#else
+#define D(x)
+#endif
+
+const int maxn = 10000;
+
+int main() {
+	// input
+#if BENCH
+	freopen("t.txt", "r", stdin);
+#endif
+
+	int n;
+	while (cin >> n) {
+		
+	}
+	return 0;
+}

@@ -1,0 +1,75 @@
+/*
+ * POJ 3969
+ *
+ * Solution: http://hi.baidu.com/chenwenwen0210/item/31b7f741b101ffcfa4c06668
+ */
+
+#include <iostream>
+#include <cstring>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <set>
+#include <climits>
+#include <cfloat>
+#include <cmath>
+
+using namespace std;
+
+#define DBG 1
+
+#if DBG
+#define D(x) x;
+#else
+#define D(x)
+#endif
+
+#define MAX 10000
+
+// bfs
+bool color(vector<vector<int> > &g, vector<int> &c, int u, int k) {
+	int i;
+	for (i = 0; i < g[u].size(); i++) {
+		int v = g[u][i];
+	}
+}
+
+int main() {
+	// input
+	freopen("kgraph_color.txt", "r", stdin);
+
+	int n; // vertices	[3,9999] - odd
+ 	int m; // edges		[2,100000]
+ 	int k; // colors
+
+ 	int i,j;
+
+ 	int deg = 0;
+
+	while (cin >> n >> m) {
+	 	vector< vector<int> > g(n);
+
+		for (i = 0; i < m; i++) {
+			int from, to;
+			cin >> from >> to;
+			from--; to--;
+			g[from].push_back(to);
+			g[to].push_back(from);
+		}
+
+		for (i = 0; i < n; i++)
+			deg = max(deg, (int)g[i].size());
+
+		k = deg + (deg & 1 == 0);
+
+		D(cout << "k = " << k << endl);
+
+		vector<int> c(n, -1);
+		color(g, c, 0, k);
+	}
+	return 0;
+}
+
+
+
