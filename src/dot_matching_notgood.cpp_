@@ -136,7 +136,7 @@ int main() {
 			P[i].index = i;
 			memset(g[i], 0, sizeof(g[i][0])*n);
 		}
-		cout << solve() << endl;
+		cout << "Case #" << tc + 1 << endl << (solve() ? "YES" : "NO") << endl;
 	}
 	return 0;
 }
