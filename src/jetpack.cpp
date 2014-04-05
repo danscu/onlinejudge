@@ -16,8 +16,10 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include <ctime>
 
 using namespace std;
+
 #ifdef BENCH
 
 # define DBG 0
@@ -40,6 +42,10 @@ const int maxn = 510;
 const Num INF = 100000000;
 const Num NO_PATH = INF + 1;
 const Num SYMX = -10;
+
+#if DBG
+size_t maxPieces;
+#endif
 
 struct Edge {
 	int dst;
@@ -69,6 +75,7 @@ struct PieceFunc {
 };
 
 struct WtFunc : public vector<PieceFunc> {
+	typedef vector<PieceFunc> Base;
 	void reset() {
 		clear();
 		push_back(PieceFunc(INF, NO_PATH, 0));
@@ -86,6 +93,28 @@ struct WtFunc : public vector<PieceFunc> {
 				push_back(PieceFunc(INF, e.weight, 0));
 			} else
 				push_back(PieceFunc(INF, 0, 1));
+		}
+	}
+
+	void push_back(const PieceFunc &pf) {
+		if (empty()) {
+			Base::push_back(pf);
+			return;
+		}
+		PieceFunc &last = *rbegin();
+		if (last.a == pf.a && last.b == pf.b) {
+			assert(last.bound <= pf.bound);
+			last.bound = pf.bound;
+		} else {
+			if (last.bound < pf.bound)
+				Base::push_back(pf);
+			else {
+				// last.bound == pf.bound, keep smaller
+				if (pf.b < last.b) {
+					last.a = pf.a;
+					last.b = pf.b;
+				}
+			}
 		}
 	}
 
@@ -145,10 +174,12 @@ struct WtFunc : public vector<PieceFunc> {
 		return res;
 	}
 
-	// min path
-	WtFunc operator*(const WtFunc rhs) {
-		if (noPath() && !rhs.noPath())
+	// merge path
+	WtFunc merge(const WtFunc rhs, bool &updated) {
+		if (noPath() && !rhs.noPath()) {
+			updated = true;
 			return rhs;
+		}
 		if (rhs.noPath() && !noPath())
 			return *this;
 
@@ -158,16 +189,17 @@ struct WtFunc : public vector<PieceFunc> {
 		Num lastBound = 0; // exclusive
 		while (lhsIt != end() && rhsIt != rhs.end()) {
 			Num bound = min(lhsIt->bound, rhsIt->bound);
-			Num v1 = lhsIt->eval(lastBound);
+			Num v1 = lhsIt->eval(lastBound + 1);
 			Num v2 = lhsIt->eval(bound);
-			Num w1 = rhsIt->eval(lastBound);
+			Num w1 = rhsIt->eval(lastBound + 1);
 			Num w2 = rhsIt->eval(bound);
 
 			if (v1 <= w1 && v2 <= w2)
 				res.push_back(PieceFunc(bound, lhsIt->b, lhsIt->a));
-			else if (w1 <= v1 && w2 <= v2)
+			else if (w1 <= v1 && w2 <= v2) {
 				res.push_back(PieceFunc(bound, rhsIt->b, rhsIt->a));
-			else {
+				updated = true;
+			} else {
 				// intersect
 				Num root = lhsIt->solveLE(*rhsIt);
 				if (root != INF) {
@@ -182,6 +214,7 @@ struct WtFunc : public vector<PieceFunc> {
 						res.push_back(PieceFunc(bound, lhsIt->b, lhsIt->a));
 					}
 				}
+				updated = true;
 			}
 			if (bound == lhsIt->bound)
 				lhsIt++;
@@ -190,14 +223,19 @@ struct WtFunc : public vector<PieceFunc> {
 			lastBound = bound;
 		}
 		assert(lhsIt == end() && rhsIt == rhs.end());
+#if DBG
+		maxPieces = max(maxPieces, res.size());
+#endif
 		return res;
 	}
 };
 
-vector<Edge> g[maxn];
-WtFunc w[maxn][maxn];
-
 int N, M;
+vector<Edge> g[maxn];
+const int maxQ = maxn * maxn;
+int open[maxQ];
+int head, rear;
+WtFunc dist[maxn];
 
 void addEdge(int src, int dst, int wt) {
 	vector<Edge> &node = g[src];
@@ -218,44 +256,30 @@ void addEdge(int src, int dst, int wt) {
 		found->hasX = true;
 }
 
-void floydMarshall() {
-	REP(i, N)
-		w[i][i].setSimpleWeight(0);
-
-	REP(i, N) {
-		for (every(it, g[i]))
-			w[i][it->dst] = WtFunc(*it);
-	}
-
+string bfs(int src, int dst) {
 	REP(i,N)
-	REP(j,N)
-	REP(k,N) {
-		WtFunc newPath = w[i][k] + w[k][j];
-		w[i][j] = w[i][j] * newPath;
+		dist[i].reset();
+	dist[src].setSimpleWeight(0);
+	rear = head = 0;
+	open[rear++] = src;
+	while (head < rear) {
+		int u = open[head++];
+		for (every(edgeIt, g[u])) {
+			Edge &e(*edgeIt);
+			bool updated = false;
+			// find better path
+			WtFunc newPath = dist[u] + WtFunc(e);
+			dist[e.dst] = dist[e.dst].merge(newPath, updated);
+			if (updated)
+				open[rear++] = e.dst;
+		}
 	}
-}
-
-string queryPath(int src, int dst) {
-	WtFunc &wf = w[src][dst];
+	WtFunc &wf = dist[dst];
 	int count;
 	Num res = wf.getVal(count);
 	ostringstream os;
 	return res == NO_PATH ? "0 0" :
 			(res == INF ? "inf" : (os << count << " " << res, os.str()));
-}
-
-list<int> open;
-
-string bfs(int src, int dst) {
-	bool *visited = new bool[N];
-	CLR(visited);
-	open.clear();
-	open.push_back(src);
-	while (!open.empty()) {
-		int u = open.front(); open.pop_front();
-		// TODO
-	}
-	return "";
 }
 
 int main() {
@@ -264,14 +288,13 @@ int main() {
 #if BENCH
 	freopen("jetpack.txt","r",stdin);
 #endif
-
+#if DBG
+	std::clock_t c_start = std::clock();
+#endif
 	cin >> T;
 	for (int tc = 0; tc < T; tc++) {
 		cin >> N >> M;
-		REP(i, N) {
-			g[i].clear();
-			REP(j,N) w[i][j].reset();
-		}
+		REP(i,N) g[i].clear();
 		for (i = 0; i < M ; i++) {
 			Num a, b, l;
 			string w;
@@ -287,24 +310,19 @@ int main() {
 		}
 		int Q;
 		cin >> Q;
-		if (Q > 0) {
-			// floyd
-			floydMarshall();
-			REP(i,Q) {
-				Num a, b;
-				cin >> a >> b; a--; b--;
-				cout << queryPath(a, b) << endl;
-			}
-		} else {
-			// dijkstra
-			REP(i,Q) {
-				Num a, b;
-				cin >> a >> b; a--; b--;
-				cout << bfs(a, b) << endl;
-			}
+		// bfs
+		REP(i,Q) {
+			Num a, b;
+			cin >> a >> b; a--; b--;
+			cout << bfs(a, b) << endl;
 		}
 		cout << endl;
 		cout.flush();
 	}
+#if DBG
+	cout << "maxPieces = " << maxPieces << endl;
+	double diff = 1000.0 * (std::clock() - c_start) / CLOCKS_PER_SEC;
+	cout << "Time: " << diff << "ms" << endl;
+#endif
 	return 0;
 }
