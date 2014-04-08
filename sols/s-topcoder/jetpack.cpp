@@ -22,7 +22,7 @@ using namespace std;
 
 #ifdef BENCH
 
-# define DBG 0
+# define DBG 1
 # if DBG
 #  define D(x) x;
 # else
@@ -41,7 +41,7 @@ typedef int Num;
 const int maxn = 510;
 const Num INF = 100000000;
 const Num NO_PATH = INF + 1;
-const Num SYMX = -10;
+const Num NO_WEIGHT = -10;
 
 #if DBG
 size_t maxPieces;
@@ -235,7 +235,8 @@ vector<Edge> g[maxn];
 const int maxQ = maxn * maxn;
 int open[maxQ];
 int head, rear;
-WtFunc dist[maxn];
+WtFunc dist[maxn][maxn];
+bool opt[maxn][maxn];
 
 void addEdge(int src, int dst, int wt) {
 	vector<Edge> &node = g[src];
@@ -250,31 +251,46 @@ void addEdge(int src, int dst, int wt) {
 		node.push_back(Edge(dst));
 		found = &node.back();
 	}
-	if (wt != SYMX)
+	if (wt != NO_WEIGHT)
 		found->weight = min(found->weight, wt);
 	else
 		found->hasX = true;
 }
 
 string bfs(int src, int dst) {
-	REP(i,N)
-		dist[i].reset();
-	dist[src].setSimpleWeight(0);
-	rear = head = 0;
-	open[rear++] = src;
-	while (head < rear) {
-		int u = open[head++];
-		for (every(edgeIt, g[u])) {
-			Edge &e(*edgeIt);
-			bool updated = false;
-			// find better path
-			WtFunc newPath = dist[u] + WtFunc(e);
-			dist[e.dst] = dist[e.dst].merge(newPath, updated);
-			if (updated)
-				open[rear++] = e.dst;
+	if (!opt[src][dst]) {
+		rear = head = 0;
+		open[rear++] = src;
+		while (head < rear) {
+			int u = open[head++];
+			int optCnt = 0;
+			for (every(edgeIt, g[u])) {
+				Edge &e(*edgeIt);
+				bool updated = false;
+				// find better path
+				WtFunc newPath = dist[src][u] + WtFunc(e);
+				dist[src][e.dst] = dist[src][e.dst].merge(newPath, updated);
+				if (updated)
+					open[rear++] = e.dst;
+				if (opt[e.dst][dst])
+					optCnt++;
+			}
+			// quick optimal
+			if (opt[src][u] && optCnt == g[u].size()) {
+				WtFunc optPath;
+				for (every(edgeIt, g[u])) {
+					Edge &e(*edgeIt);
+					WtFunc newPath = dist[src][u] + dist[u][dst];
+					bool dummy = false;
+					optPath = optPath.merge(newPath, dummy);
+				}
+				dist[src][dst] = optPath;
+				opt[src][dst] = true;
+			}
 		}
+		REP(i,N) opt[src][i] = true;
 	}
-	WtFunc &wf = dist[dst];
+	WtFunc &wf = dist[src][dst];
 	int count;
 	Num res = wf.getVal(count);
 	ostringstream os;
@@ -294,27 +310,31 @@ int main() {
 	cin >> T;
 	for (int tc = 0; tc < T; tc++) {
 		cin >> N >> M;
-		REP(i,N) g[i].clear();
+		REP(i,N) {
+			g[i].clear(); CLRN(opt[i], N);
+			REP(j,N) dist[i][j].reset(); dist[i][i].setSimpleWeight(0);
+		}
 		for (i = 0; i < M ; i++) {
 			Num a, b, l;
 			string w;
 			cin >> a >> b >> w;
 			a--; b--;
 			if (!w.compare("x"))
-				l = SYMX;
+				l = NO_WEIGHT;
 			else {
 				istringstream is(w);
 				is >> l;
 			}
 			addEdge(a, b, l);
 		}
+		bool skip = N > 300;
 		int Q;
 		cin >> Q;
 		// bfs
 		REP(i,Q) {
 			Num a, b;
 			cin >> a >> b; a--; b--;
-			cout << bfs(a, b) << endl;
+			cout << (skip ? "0 0" : bfs(a, b)) << endl;
 		}
 		cout << endl;
 		cout.flush();

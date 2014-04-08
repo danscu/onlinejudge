@@ -16,10 +16,8 @@
 #include <stack>
 #include <string>
 #include <vector>
-#include <ctime>
 
 using namespace std;
-
 #ifdef BENCH
 
 # define DBG 0
@@ -42,10 +40,6 @@ const int maxn = 510;
 const Num INF = 100000000;
 const Num NO_PATH = INF + 1;
 const Num SYMX = -10;
-
-#if DBG
-size_t maxPieces;
-#endif
 
 struct Edge {
 	int dst;
@@ -95,29 +89,27 @@ struct WtFunc : public vector<PieceFunc> {
 				push_back(PieceFunc(INF, 0, 1));
 		}
 	}
-
 	void push_back(const PieceFunc &pf) {
-		if (empty()) {
-			Base::push_back(pf);
-			return;
-		}
-		PieceFunc &last = *rbegin();
-		if (last.a == pf.a && last.b == pf.b) {
-			assert(last.bound <= pf.bound);
-			last.bound = pf.bound;
-		} else {
-			if (last.bound < pf.bound)
+			if (empty()) {
 				Base::push_back(pf);
-			else {
-				// last.bound == pf.bound, keep smaller
-				if (pf.b < last.b) {
-					last.a = pf.a;
-					last.b = pf.b;
+				return;
+			}
+			PieceFunc &last = *rbegin();
+			if (last.a == pf.a && last.b == pf.b) {
+				assert(last.bound <= pf.bound);
+				last.bound = pf.bound;
+			} else {
+				if (last.bound < pf.bound)
+					Base::push_back(pf);
+				else {
+					// last.bound == pf.bound, keep smaller
+					if (pf.b < last.b) {
+						last.a = pf.a;
+						last.b = pf.b;
+					}
 				}
 			}
 		}
-	}
-
 	void setSimpleWeight(int wt) {
 		begin()->b = wt;
 	}
@@ -223,19 +215,14 @@ struct WtFunc : public vector<PieceFunc> {
 			lastBound = bound;
 		}
 		assert(lhsIt == end() && rhsIt == rhs.end());
-#if DBG
-		maxPieces = max(maxPieces, res.size());
-#endif
 		return res;
 	}
 };
 
-int N, M;
 vector<Edge> g[maxn];
-const int maxQ = maxn * maxn;
-int open[maxQ];
-int head, rear;
-WtFunc dist[maxn];
+WtFunc w[maxn][maxn];
+
+int N, M;
 
 void addEdge(int src, int dst, int wt) {
 	vector<Edge> &node = g[src];
@@ -256,14 +243,44 @@ void addEdge(int src, int dst, int wt) {
 		found->hasX = true;
 }
 
+void floydMarshall() {
+	REP(i, N)
+		w[i][i].setSimpleWeight(0);
+
+	REP(i, N) {
+		for (every(it, g[i]))
+			w[i][it->dst] = WtFunc(*it);
+	}
+
+	REP(i,N)
+	REP(j,N)
+	REP(k,N) {
+		bool dummy;
+		WtFunc newPath = w[i][k] + w[k][j];
+		w[i][j] = w[i][j].merge(newPath, dummy);
+	}
+}
+
+string queryPath(int src, int dst) {
+	WtFunc &wf = w[src][dst];
+	int count;
+	Num res = wf.getVal(count);
+	ostringstream os;
+	return res == NO_PATH ? "0 0" :
+			(res == INF ? "inf" : (os << count << " " << res, os.str()));
+}
+
+list<int> open;
+WtFunc dist[maxn];
+
 string bfs(int src, int dst) {
 	REP(i,N)
 		dist[i].reset();
 	dist[src].setSimpleWeight(0);
-	rear = head = 0;
-	open[rear++] = src;
-	while (head < rear) {
-		int u = open[head++];
+	open.clear();
+	open.push_back(src);
+	while (!open.empty()) {
+		int u = open.front(); open.pop_front();
 		for (every(edgeIt, g[u])) {
 			Edge &e(*edgeIt);
 			bool updated = false;
@@ -271,7 +288,7 @@ string bfs(int src, int dst) {
 			WtFunc newPath = dist[u] + WtFunc(e);
 			dist[e.dst] = dist[e.dst].merge(newPath, updated);
 			if (updated)
-				open[rear++] = e.dst;
+				open.push_back(e.dst);
 		}
 	}
 	WtFunc &wf = dist[dst];
@@ -288,13 +305,14 @@ int main() {
 #if BENCH
 	freopen("jetpack.txt","r",stdin);
 #endif
-#if DBG
-	std::clock_t c_start = std::clock();
-#endif
+
 	cin >> T;
 	for (int tc = 0; tc < T; tc++) {
 		cin >> N >> M;
-		REP(i,N) g[i].clear();
+		REP(i, N) {
+			g[i].clear();
+			REP(j,N) w[i][j].reset();
+		}
 		for (i = 0; i < M ; i++) {
 			Num a, b, l;
 			string w;
@@ -310,19 +328,24 @@ int main() {
 		}
 		int Q;
 		cin >> Q;
-		// bfs
-		REP(i,Q) {
-			Num a, b;
-			cin >> a >> b; a--; b--;
-			cout << bfs(a, b) << endl;
+		if (Q == 0) {
+			// floyd
+			floydMarshall();
+			REP(i,Q) {
+				Num a, b;
+				cin >> a >> b; a--; b--;
+				cout << queryPath(a, b) << endl;
+			}
+		} else {
+			// bfs
+			REP(i,Q) {
+				Num a, b;
+				cin >> a >> b; a--; b--;
+				cout << bfs(a, b) << endl;
+			}
 		}
 		cout << endl;
 		cout.flush();
 	}
-#if DBG
-	cout << "maxPieces = " << maxPieces << endl;
-	double diff = 1000.0 * (std::clock() - c_start) / CLOCKS_PER_SEC;
-	cout << "Time: " << diff << "ms" << endl;
-#endif
 	return 0;
 }
