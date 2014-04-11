@@ -44,7 +44,8 @@ bool intersect(int p11, int p12, int p21, int p22) {
 	int q11 = min(p11, p12), q12 = max(p11, p12);
 	int q21 = min(p21, p22), q22 = max(p21, p22);
 
-	if (q11 == q21 || q11 == q22 || q12 == q21 || q12 == q22)
+	if (q11 == q21 || q11 == q22 || q12 == q21 || q12 == q22 ||
+		q12 == q21 || q12 == q22 || q11 == q21 || q11 == q22)
 		return false;
 
 	return (q11 < q21 && q21 < q12 && !(q11 <= q22 && q22 <= q12)) ||
@@ -122,10 +123,29 @@ int main() {
 	freopen("max_circular_nonintersect_lines.txt", "r", stdin);
 #endif
 
+	int i,j,k,l;
+
+	n = 10;
+
+	for (i = 0; i < n - 1; i++)
+		for (j = i + 1; j < n; j++) {
+			cout << "Start (" << i + 1 << ", " << j + 1<< ")" << endl;
+			for (k = 0; k < n - 1; k++) {
+				cout << k + 1 << " ";
+				for (l = 0; l < k; l++)
+					cout << "  ";
+				for (l = k + 1; l < n; l++) {
+					cout << intersect(i,j,k,l) << " ";
+					cout.flush();
+				}
+				cout << endl;
+			}
+			cout << endl;
+		}
+
 	for (int T = 0; T < 1000; T++) {
 		srand(time(NULL));
 
-		n = 10;
 		m = 20;
 
 		set<pair<int,int> > es;
@@ -134,6 +154,7 @@ int main() {
 			int b = rand() % n;
 			if (a > b)
 				swap(a, b);
+			if (a == b) continue;
 			es.insert(make_pair(a, b));
 		}
 
@@ -153,6 +174,12 @@ int main() {
 
 		if (maxdep != sizeGreedy) {
 			cout << "Greedy failed" << endl;
+
+			for (vector<pair<int,int> >::iterator it = edges.begin();
+					it != edges.end(); ++it) {
+				cout << it->first + 1 << "," << it->second + 1<< endl;
+			}
+
 			exit(0);
 		}
 	}
