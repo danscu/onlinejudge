@@ -1,0 +1,72 @@
+#include <iostream>
+#include <bitset>
+#include <cmath>
+
+using namespace std;
+
+// Conjecture (superset of Goldbach)
+// A number M * K can be decomposed into the sum of M primes
+
+const int N = 1000000;
+const int M = 11113;
+
+bitset<N> sv;
+int path[M];
+
+void sieve(int limit) {
+    int fac = 3, faclim = sqrt(limit);
+    for (int i = 4; i < limit; i+=2)
+        sv[i] = true;
+    while (fac <= faclim) {
+        while (sv[fac] && fac <= faclim && fac < limit)
+            fac++;
+        if (fac > faclim) break;
+        int visit = fac * 2;
+        while (visit < limit) {
+            sv[visit] = true;
+            visit += fac;
+        }
+        fac+=2;
+    }
+}
+
+bool decomp(int number, int depth) {
+    if (depth == M - 1) {
+        path[depth] = number;
+        return number >= 2 && !sv[number];
+    }
+    for (int i = 2; i <= number; i++) {
+        if (!sv[i]) {
+            path[depth] = i;
+            if (decomp(number - i, depth + 1))
+                return true;
+        }
+    }
+    return false;
+}
+
+int main() {
+    int i, j;
+
+    sieve(N);
+
+    for (i = 1; i < N; i++)
+        if (!sv[i])
+            cout << i << " ";
+    cout << endl;
+
+    for (i = M * 2; i < N; i += M) {
+        cout << i << " = ";
+        if (decomp(i, 0)) {
+            for (j = 0; j < M; j++)
+                cout << path[j] << " ";
+            cout << endl;
+        } else {
+            cout << "n/a" << endl;
+            cout << endl << "COUNTER-EXAMPLE: " << i << endl;
+            break;
+        }
+    }
+
+    return 0;
+}
