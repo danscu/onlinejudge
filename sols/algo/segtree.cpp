@@ -27,10 +27,10 @@ int lazy[MAX];
  * Build and init tree
  */
 void build_tree(int node, int a, int b) {
-  	if(a > b) return; // Out of range
+	if(a > b) return; // Out of range
 
-  	if(a == b) { // Leaf node
-    		tree[node] = arr[a]; // Init value
+	if(a == b) { // Leaf node
+		tree[node] = arr[a]; // Init value
 		return;
 	}
 
@@ -45,29 +45,29 @@ void build_tree(int node, int a, int b) {
  */
 void update_tree(int node, int a, int b, int i, int j, int value) {
 
-  	if(lazy[node] != 0) { // This node needs to be updated
-   		tree[node] += lazy[node]; // Update it
+	if (lazy[node] != 0) { // This node needs to be updated
+		tree[node] += lazy[node]; // Update it
 
-		if(a != b) {
+		if (a != b) {
 			lazy[node*2] += lazy[node]; // Mark child as lazy
-    			lazy[node*2+1] += lazy[node]; // Mark child as lazy
+			lazy[node*2+1] += lazy[node]; // Mark child as lazy
 		}
 
-   		lazy[node] = 0; // Reset it
-  	}
+		lazy[node] = 0; // Reset it
+	}
 
-	if(a > b || a > j || b < i) // Current segment is not within range [i, j]
+	if (a > b || a > j || b < i) // Current segment is not within range [i, j]
 		return;
 
-  	if(a >= i && b <= j) { // Segment is fully within range
-    		tree[node] += value;
+	if (a >= i && b <= j) { // Segment is fully within range
+		tree[node] += value;
 
-		if(a != b) { // Not leaf node
+		if (a != b) { // Not leaf node
 			lazy[node*2] += value;
 			lazy[node*2+1] += value;
 		}
 
-    		return;
+		return;
 	}
 
 	update_tree(node*2, a, (a+b)/2, i, j, value); // Updating left child
@@ -83,7 +83,7 @@ int query_tree(int node, int a, int b, int i, int j) {
 
 	if(a > b || a > j || b < i) return -inf; // Out of range
 
-	if(lazy[node] != 0) { // This node needs to be updated
+	if (lazy[node] != 0) { // This node needs to be updated
 		tree[node] += lazy[node]; // Update it
 
 		if(a != b) {

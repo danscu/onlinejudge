@@ -1,0 +1,67 @@
+#include <iostream>
+#include <map>
+
+class Token;
+class CharacterReader;
+
+class CharacterReader {
+
+};
+
+class Tokenizer {
+public:
+    // Tokenizer States
+    typedef enum { INITIAL = 0, STATE_1, STATE_2, END } TokenizerState;
+
+private:
+	TokenizerState current_state;
+    CharacterReader r;
+    std::map<TokenizerState, void (Tokenizer::*pmf)()> stateMap;
+
+public:
+    // State Handlers
+    void handle_Initial();
+    void handle_State_1();
+    void handle_State_2();
+    // 20 more states before END...
+    void handle_End();
+
+    Tokenizer(String text_to_tokenize)
+    {
+        stateMap[INITIAL] = handle_Initial;
+        stateMap[STATE_1] = handle_State_1;
+        stateMap[STATE_2] = handle_State_2;
+        stateMap[END] = handle_End;
+
+        current_state = TokenizerState::INITIAL;
+        r.set(text_to_tokenize);
+    }
+
+    void switchState(TokenizerState s) { current_state = s; }
+
+    void run() {
+        while (current_state!=TokenizerState::END) {
+            Token token = stateMap[current_state]();
+            // do something with the Token
+        }
+    }
+};
+
+void Tokenizer::handle_Initial() {
+}
+
+void Tokenizer::handle_State_1() {
+    char c = r++;
+    switch(c) {
+        case 'a':
+                break;
+        case 'b':
+                ts.switchState(Tokenizer::TokenizerState::STATE_2);
+    }
+}
+
+void Tokenizer::handle_State_2() {
+}
+
+void Tokenizer::handle_End() {
+}

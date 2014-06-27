@@ -1,0 +1,32 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+#include <ctime>
+
+using namespace std;
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, n*sizeof x[0]);
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define REP(v,n) for(int v=0;v<n;v++)
+#define every(iter, iterable) \
+ typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+// TeMpOrArY code
+
+typedef int Q; const int A = 510; const Q Q1 = 100000000; const Q Q2 = Q1 + 1; const Q Q3 = -10;  struct S1 {  int i1;  Q q1;  bool b1;  S1(int i2, Q q2 = Q2, bool b2 = false) :   i1(i2), q1(q2), b1(b2)  { } };  struct F2 {  Q h;  int b;  int a;  F2(Q bound, int b, int a) :   h(bound), b(b), a(a)  { }  Q el(Q x) const {   return a * x + b;  }  Q jt(const F2 r) const {   Q x0 = Q1;   if (a - r.a)    x0 = (r.b - b) / (a - r.a);   return x0;  } };  struct G : public vector<F2> {  typedef vector<F2> S;  void reset() {   clear();   ii(F2(Q1, Q2, 0));  }  G() {   reset();  }  G(S1 &e) {   if (!e.b1) {    assert(e.q1 != Q2);    ii(F2(Q1, e.q1, 0));   } else {    if (e.q1 != Q2) {     ii(F2(e.q1 - 1, 0, 1));     ii(F2(Q1, e.q1, 0));    } else     ii(F2(Q1, 0, 1));   }  }   void ii(const F2 &pf) {   if (empty()) {    S::push_back(pf);    return;   }   F2 &z = *rbegin();   if (z.a == pf.a && z.b == pf.b) {    assert(z.h <= pf.h);    z.h = pf.h;   } else {    if (z.h < pf.h)     S::push_back(pf);    else {     if (pf.b < z.b) {      z.a = pf.a;      z.b = pf.b;     }    }   }  }   void ssw(int wt) {   begin()->b = wt;  }   bool np() const {   return begin()->b == Q2;  }   Q dz(int &ct) {   Q jh = 0;   Q bj = 0;   ct = 0;   for (every(it,*this)) {    F2 &f(*it);    if (f.a) {     if (f.h != Q1) {      int c = f.h - bj;      ct += c;      jh += (f.el(bj + 1) + f.el(f.h)) *       c / 2;     } else      jh = Q1;    } else {     jh += f.el(bj + 1);     ct++;    }    bj = f.h;   }   return jh;  }   G operator+(const G r) {   if (np() || r.np())    return G();    G res; res.clear();   G::const_iterator li = begin();   G::const_iterator ri = r.begin();   while (li != end() && ri != r.end()) {    if (li == end() && ri != r.end()) {     res.ii(*ri); ++ri; continue;    }    if (li != end() && ri == r.end()) {     res.ii(*li); ++li; continue;    }    Q bd = min(li->h, ri->h);    res.ii(F2(bd, li->b + ri->b, li->a + ri->a));    if (bd == li->h)     li++;    if (bd == ri->h)     ri++;   }   return res;  }   G bb(const G r, bool &qq) {   if (np() && !r.np()) {    qq = true;    return r;   }   if (r.np() && !np())    return *this;    G gz; gz.clear();   G::const_iterator li = begin();   G::const_iterator ri = r.begin();   Q sc = 0;   while (li != end() && ri != r.end()) {    Q bd = min(li->h, ri->h);    Q v1 = li->el(sc + 1);    Q v2 = li->el(bd);    Q w1 = ri->el(sc + 1);    Q w2 = ri->el(bd);     if (v1 <= w1 && v2 <= w2)     gz.ii(F2(bd, li->b, li->a));    else if (w1 <= v1 && w2 <= v2) {     gz.ii(F2(bd, ri->b, ri->a));     qq = true;    } else {     Q xx = li->jt(*ri);     if (xx != Q1) {      Q fb = xx;      if (li->el(xx) == ri->el(xx))       fb--;      if (li->el(fb) < ri->el(fb)) {       gz.ii(F2(fb, li->b, li->a));       gz.ii(F2(bd, ri->b, ri->a));      } else {       gz.ii(F2(fb, ri->b, ri->a));       gz.ii(F2(bd, li->b, li->a));      }     }     qq = true;    }    if (bd == li->h)     li++;    if (bd == ri->h)     ri++;    sc = bd;   }   assert(li == end() && ri == r.end());   return gz;  } };  int N, M; vector<S1> g[A]; const int maxQ = A * A; int oo[maxQ]; int tt, wb; G dt[A][A]; bool ot[A][A];  void pn(int src, int dst, int wt) {  vector<S1> &n = g[src];  S1 *f = 0;  for (every(it, n)) {   if (it->i1 == dst) {    f = &(*it);    break;   }  }  if (!f) {   n.push_back(S1(dst));   f = &n.back();  }  if (wt != Q3)   f->q1 = min(f->q1, wt);  else   f->b1 = true; }  string lol(int src, int dst) {  if (!ot[src][dst]) {   wb = tt = 0;   oo[wb++] = src;   while (tt < wb) {    int u = oo[tt++];    for (every(et, g[u])) {     S1 &e(*et);     bool up = false;     G xp = dt[src][u] + G(e);     dt[src][e.i1] = dt[src][e.i1].bb(xp, up);     if (up)      oo[wb++] = e.i1;    }   }   REP(i,N) ot[src][i] = true;  }  G &wf = dt[src][dst];  int count;  Q res = wf.dz(count);  ostringstream os;  return res == Q2 ? "0 0" :    (res == Q1 ? "inf" : (os << count << " " << res, os.str())); }  int main() {  int T;  Q i; #if BENCH  freopen("jetpack.txt","r",stdin); #endif  cin >> T;  for (int tc = 0; tc < T; tc++) {   cin >> N >> M;   REP(i,N) {    g[i].clear(); CLRN(ot[i], N);    REP(j,N) dt[i][j].reset(); dt[i][i].ssw(0);   }   for (i = 0; i < M ; i++) {    Q a, b, l;    string w;    cin >> a >> b >> w;    a--; b--;    if (!w.compare("x"))     l = Q3;    else {     istringstream is(w);     is >> l;    }    pn(a, b, l);   }   bool yuu = N > 300;   int q;   cin >> q;   REP(i,q) {    Q a, b;    cin >> a >> b; a--; b--;    cout << (yuu ? "0 0" : lol(a, b)) << endl;   }   cout << endl;   cout.flush();  }  return 0; }

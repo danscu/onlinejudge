@@ -1,0 +1,374 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <stdio.h>
+#include <set>
+
+#define TIME
+//#define READ_FROM_FILE
+
+#ifdef READ_FROM_FILE
+#include <fstream>
+#endif // READ_FROM_FILE
+
+using namespace std;
+
+struct Node;
+
+typedef vector< Node > NodeArray;
+typedef pair< Node*, int  > NodeLength;
+
+typedef vector< NodeLength > NodeLengthArray;
+
+typedef pair< int, int > IntPair;
+typedef vector< pair< int, int > > IntPairArray;
+
+bool sortPair( const IntPair & p1, const IntPair & p2 )
+{
+ //return p1.first + p1.second < p2.first + p2.second;
+
+ if ( p1.second == p2.second )
+  return p1.first < p2.first;
+ return p1.second < p2.second;
+}
+bool removeRep( const IntPair & p1, const IntPair & p2 )
+{
+ return p1.second == p2.second;
+}
+
+
+class SortPairToAnalize
+{
+public:
+ int dist;
+
+ bool operator ()( const IntPair & p1, const IntPair & p2 )
+ {
+  return (dist - p1.first)/p1.second < (dist - p2.first)/p2.second;
+ }
+};
+
+struct Node
+{
+ int index;
+
+ //int length;
+
+ NodeLengthArray neighbours;
+
+ IntPairArray paths;
+ bool visited;
+};
+
+
+void doSth( Node & n, int destIndex )
+{
+ if ( n.index == destIndex )
+ {
+  return;
+ }
+
+ if ( n.visited )
+  return;
+ n.visited = true;
+
+ for ( int p=0; p<n.paths.size( ); ++p )
+ {
+  for ( int i=0; i<n.neighbours.size( ); ++i )
+  {
+   IntPair newPath = n.paths[p];
+
+   if ( n.neighbours[i].second == -1 )
+    newPath.second++;
+   else
+    newPath.first += n.neighbours[i].second;
+
+   Node & neigbNode = *n.neighbours[i].first;
+   if ( neigbNode.paths.empty( ) )
+   {
+    neigbNode.paths.push_back( newPath );
+   }
+   else
+   {
+    bool foundFaster = false;
+    for ( int np=0; np<neigbNode.paths.size( ); ++np )
+    {
+     IntPair diffPath( newPath.first - neigbNode.paths[np].first, newPath.second - neigbNode.paths[np].second );
+
+
+     if ( diffPath.first >= 0 && diffPath.second >= 0 )
+     {
+      foundFaster = true;
+      break;
+     }
+    }
+
+    if ( !foundFaster )
+     neigbNode.paths.push_back( newPath );
+   }
+  }
+ }
+
+ for ( int i=0; i<n.neighbours.size( ); ++i )
+ {
+  doSth( *n.neighbours[i].first, destIndex );
+ }
+}
+
+int main( ) {
+#if BENCH
+	freopen("jetpack.txt","r",stdin);
+#endif
+
+#ifdef TIME
+ clock_t start = clock();
+#endif
+
+ int tc_quantity;
+ //cin.sync_with_stdio( false );
+
+#ifdef READ_FROM_FILE
+ std::ifstream fin ( "sample_inputs_jets.txt" );
+ //std::ifstream fin ( "data2" );
+
+ if ( !fin.is_open( ) )
+ {
+  std::cout << "No data file" << std::endl;
+  return 0;
+ }
+
+#endif // READ_FROM_FILE
+
+#ifdef READ_FROM_FILE
+ fin >> tc_quantity;
+ std::cout << tc_quantity << std::endl;
+#else
+ cin >> tc_quantity;
+#endif
+
+ for ( int tc=0; tc<tc_quantity; ++tc )
+ {
+
+  int N; // points
+  int M; // lines
+
+#ifdef READ_FROM_FILE
+  fin >> N >> M;
+  printf( "points - %d, lines - %d\n", N, M );
+#else
+  cin >> N >> M;
+#endif
+
+  NodeArray nodes( N );
+
+  for ( int i=0; i<N; ++i )
+  {
+   nodes[i].index = i;
+  }
+
+  Node tempNode;
+  for ( int i=0; i<M; ++i )
+  {
+   int lfrom;
+   int lto;
+
+   int length;
+   char x;
+
+#ifdef READ_FROM_FILE
+   fin >> lfrom >> lto;
+
+   fin.ignore( 1 );
+   x = fin.peek( );
+
+   if ( x == 'x' )
+   {
+    fin >> x;
+    length = -1;
+
+   }
+   else
+   {
+    fin >> length;
+   }
+#else
+   cin >> lfrom >> lto;
+
+   cin.ignore( 1 );
+   x = cin.peek( );
+
+   if ( x == 'x' )
+   {
+    cin >> x;
+    length = -1;
+
+   }
+   else
+   {
+    cin >> length;
+   }
+#endif
+   nodes[lfrom-1].neighbours.push_back( NodeLength( &nodes[lto-1], length ) );
+  }
+
+
+//   printf( "draw:\n" );
+//   for ( int i=0; i<nodes.size( ); ++i )
+//   {
+//    printf( "%d - ", nodes[i].index );
+//
+//    for ( int n=0; n<nodes[i].neighbours.size( ); ++n )
+//    {
+//     printf( "i=%d l=%d, ", nodes[i].neighbours[n].first->index, nodes[i].neighbours[n].second );
+//    }
+//
+//    printf( "\n" );
+//   }
+
+
+  int Q;
+#ifdef READ_FROM_FILE
+  fin >> Q;
+#else
+  scanf( "%d", &Q );
+#endif
+
+  for ( int i=0; i<Q; ++i )
+  {
+   int from;
+   int to;
+
+#ifdef READ_FROM_FILE
+   fin >> from >> to;
+   printf( "from %d to %d\n", from, to );
+#else
+   scanf( "%d %d", &from, &to );
+#endif
+
+   from--;
+   to--;
+
+   for ( int j=0; j<nodes.size( ); ++j )
+   {
+    nodes[j].paths.clear( );
+    nodes[j].visited = false;
+   }
+
+   nodes[from].paths.push_back( IntPair( 0, 0 ) );
+
+   doSth( nodes[from], to );
+
+//    for ( int j=0; j<nodes[to].paths.size( ); ++j )
+//    {
+//     printf( "%d %d\n", nodes[to].paths[j].first, nodes[to].paths[j].second );
+//    }
+
+   IntPairArray & nodePaths = nodes[to].paths;
+
+   if ( nodePaths.empty( ) )
+    cout << "0 0" << endl;
+   else
+   {
+    sort( nodePaths.begin( ), nodePaths.end( ), sortPair );
+    IntPairArray::iterator it = unique( nodePaths.begin( ), nodePaths.end( ), removeRep );
+
+    nodePaths.resize( distance( nodePaths.begin( ), it ) );
+
+    if ( nodePaths.front( ).second != 0 )
+    {
+     cout << "inf" << endl;
+     continue;
+    }
+
+    IntPairArray pairToAnalize;
+
+    int dist = nodePaths.front( ).first;
+    for ( int j=1; j<nodePaths.size( ); ++j )
+    {
+     if ( nodePaths[j].second != 0 )
+     {
+      if ( ( dist - nodePaths[j].first ) / nodePaths[j].second > 0 )
+       pairToAnalize.push_back( nodePaths[j] );
+     }
+    }
+
+    if ( pairToAnalize.empty( ) )
+    {
+     cout << "1 " << dist << endl;
+    }
+    else
+    {
+     SortPairToAnalize spt;
+     spt.dist = dist;
+
+     sort( pairToAnalize.begin( ), pairToAnalize.end( ), spt );
+     pairToAnalize.push_back( IntPair( dist, 0 ) );
+
+     int length = 0;
+     int counter = 0;
+     int prevChangePoint = 0;
+
+     for ( int j=1; j<pairToAnalize.size( ); ++j )
+     {
+      IntPair diffPath( pairToAnalize[j].first - pairToAnalize[j-1].first, pairToAnalize[j].second - pairToAnalize[j-1].second );
+
+      int changePoint = -diffPath.first / diffPath.second;
+
+      //int cr = (dist - pairToAnalize[j].first) / pairToAnalize[j].second;
+
+      if ( changePoint == prevChangePoint )
+       continue;
+
+      for( int h=prevChangePoint+1; h<=changePoint; ++h )
+      {
+       length += pairToAnalize[j-1].first + pairToAnalize[j-1].second * h;
+       counter++;
+      }
+
+      prevChangePoint = changePoint;
+
+      if ( j == pairToAnalize.size( )-1 )
+      {
+       if ( pairToAnalize[j-1].first + pairToAnalize[j-1].second * changePoint < dist )
+       {
+        counter++;
+        length += dist;
+       }
+      }
+     }
+
+     cout << counter << " " << length << endl;
+    }
+   }
+  }
+
+  cout << endl;
+
+//   printf( "draw:\n" );
+//   for ( int i=0; i<nodes.size( ); ++i )
+//   {
+//    printf( "%d - ", nodes[i].index );
+//
+//    for ( int n=0; n<nodes[i].neighbours.size( ); ++n )
+//    {
+//     printf( "i=%d l=%d, ", nodes[i].neighbours[n].first->index, nodes[i].neighbours[n].second );
+//    }
+//
+//    printf( "\n" );
+//   }
+//
+//   for ( int i=0; i<nodes.size( ); ++i )
+//   {
+//    nodes[i].visited = false;
+//   }
+ }
+
+#ifdef TIME
+ clock_t end = clock();
+ float seconds = (float)1000.0*(end - start) / CLOCKS_PER_SEC;
+
+ printf( "time - %fms\n", seconds);
+#endif
+
+ return 0;
+}
