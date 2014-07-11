@@ -16,17 +16,8 @@
 
 using namespace std;
 
-#define DBG 0
-
-#if DBG
-#define D(x) x;
-#else
-#define D(x)
-#endif
-
-const int maxn = 100;
-//const int MAXIND = 1 << 18;
-const int MAXIND = 1 << 8;
+const int maxn = 100001;
+const int MAXIND = 1 << 18;
 int val[maxn];
 int stree[MAXIND];
 int stree_delta[MAXIND];
@@ -97,6 +88,7 @@ int main() {
 
 	for (ntree = 1; ntree <= n; ntree *= 2)
 	    ;
+	ntree--;
 
 	for (i = 0; i < n; i ++)
 	    cin >> val[i];
