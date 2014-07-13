@@ -1,4 +1,5 @@
 /* segment tree rmq */
+/* poj 3468 ACed, bzoj(61.187.179.132) 3212 */
 
 #include <iostream>
 #include <cstring>
@@ -7,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <set>
+#include <limits>
 #include <climits>
 #include <cfloat>
 #include <cmath>
@@ -16,98 +18,96 @@
 
 using namespace std;
 
-const int maxn = 100001;
-const int MAXIND = 1 << 18;
-int val[maxn];
-int stree[MAXIND];
-int stree_delta[MAXIND];
-int ntree;
+const int maxn = 101000;
+const int MAXIND = maxn*4;
+typedef long long Num;
 
-void __stree_init(int node, int b, int e) {
-    if (b == e) {
+Num val[maxn];
+Num stree[MAXIND];
+Num add[MAXIND];
+
+void stree_pushup(int node) {
+	stree[node] = stree[2 * node] + stree[2 * node + 1];
+}
+
+void stree_pushdown(int node, int x) {
+	if (add[node]) {
+		add[node*2] += add[node];
+		add[node*2+1] += add[node];
+		stree[node*2] += (Num)(x - (x/2)) * (Num) add[node];
+		stree[node*2+1] += (Num)(x/2) * (Num) add[node];
+		add[node] = 0;
+	}
+}
+
+void stree_init(int node, int b, int e) {
+	add[node] = 0;
+	if (b == e) {
         stree[node] = val[b];
-    } else {
-        // compute the values in the left and right subtrees
-        __stree_init(2 * node, b, (b + e) / 2);
-        __stree_init(2 * node + 1, (b + e) / 2 + 1, e);
-        // search for the minimum value in the first and second half of the interval
-        stree[node] = stree[2 * node] + stree[2 * node + 1];
-    }
-    stree_delta[node] = 0;
-}
-
-void __stree_update(int node, int b, int e, int i, int j, int d) {
-    if (b == e) {
-        stree_delta[node] += d;
         return;
     }
 
-    // if the current interval doesn't intersect, the query interval, return -1
-    if (i > e || j < b)
-        return;
-
-    // if the current interval is included in the query interval, return stree[node]
-    if (b >= i && e <= j)
-        stree_delta[node] += d;
-
-    __stree_update(2*node, b, (b+e)/2, i, j, d);
-    __stree_update(2*node+1, (b+e)/2+1, e, i, j, d);
+	stree_init(2 * node, b, (b + e) / 2);
+	stree_init(2 * node + 1, (b + e) / 2 + 1, e);
+	stree_pushup(node);
 }
 
-int  __stree_query(int node, int b, int e, int i, int j) {
-    int p1, p2;
+void stree_update(int node, int b, int e, int i, int j, int d) {
+    if (i <= b && j >= e) {
+    	add[node] += d;
+    	stree[node] += (Num)d * (Num)(e - b + 1);
+    	return;
+    }
 
-    // if the current interval doesn't intersect, the query interval, return -1
-    if (i > e || j < b)
-        return -1;
+    stree_pushdown(node, e - b + 1);
 
-    // if the current interval is included in the query interval, return stree[node]
-    if (b >= i && e <= j)
-        return stree[node] + stree_delta[node] * (e - b + 1);
+    if (i <= (b+e)/2)
+    	stree_update(2*node, b, (b+e)/2, i, j, d);
+    if (j > (b+e)/2)
+    	stree_update(2*node+1, (b+e)/2+1, e, i, j, d);
 
-    // compute the minimum position in the left and right part of the interval
-    p1 = __stree_query(2*node, b, (b+e)/2, i, j);
-    p2 = __stree_query(2*node+1, (b+e)/2+1, e, i, j);
+    stree_pushup(node);
+}
 
-    // return the position where the overall minimum is
-    if (p1 == -1)
-        return p2;
-    if (p2 == -1)
-        return p1;
-    return p1 + p2;
+Num stree_query(int node, int b, int e, int i, int j) {
+	if (i <= b && j >= e)
+		return stree[node];
+
+	stree_pushdown(node, e - b + 1);
+
+	Num tmp = 0;
+    if (i <= (b+e)/2)
+    	tmp += stree_query(2*node, b, (b+e)/2, i, j);
+    if (j > (b+e)/2)
+    	tmp += stree_query(2*node+1, (b+e)/2+1, e, i, j);
+
+    return tmp;
 }
 
 int main() {
-	// input
 #if BENCH
 	freopen("files/poj3468_simple_integers.txt", "r", stdin);
 #endif
 	int i;
 	int n, k;
-	cin >> n >> k;
+	scanf("%d%d", &n, &k);
+	for (i = 1; i <= n; i ++)
+		scanf("%I64d", &val[i]);
 
-	for (ntree = 1; ntree <= n; ntree *= 2)
-	    ;
-	ntree--;
-
-	for (i = 0; i < n; i ++)
-	    cin >> val[i];
-
-	__stree_init(1, 0, ntree);
+	stree_init(1, 1, n);
 
 	for (i = 0; i < k; i++) {
-	    char cmd;
-	    int low, high;
-	    cin >> cmd;
-	    cin >> low >> high;
-	    low--; high--;
+		char cmd = 0;
+		int low, high;
+		while (cmd != 'Q' && cmd != 'C') cmd = getchar();
+		scanf("%d%d",&low,&high);
 
-	    if (cmd == 'Q')
-	        cout << __stree_query(1, 0, ntree, low, high) << endl;
-	    else {
-	        int diff; cin >> diff;
-	        __stree_update(1, 0, ntree, low, high, diff);
-	    }
+		if (cmd == 'Q')
+			printf("%lld\n", stree_query(1, 1, n, low, high));
+		else {
+			int diff; scanf("%d",&diff);
+			stree_update(1, 1, n, low, high, diff);
+		}
 	}
 	return 0;
 }

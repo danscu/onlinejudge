@@ -1,4 +1,6 @@
 /* segment tree rmq */
+/* poj 3264, tju 2762 */
+/* AC */
 
 #include <iostream>
 #include <cstring>
@@ -29,10 +31,8 @@ void __stree_init(int node, int b, int e) {
 	if (b == e) {
 		stree[node] = stree_max[node] = b;
 	} else {
-		// compute the values in the left and right subtrees
 		__stree_init(2 * node, b, (b + e) / 2);
 		__stree_init(2 * node + 1, (b + e) / 2 + 1, e);
-		// search for the minimum value in the first and second half of the interval
 		if (val[stree[2 * node]] <= val[stree[2 * node + 1]])
 			stree[node] = stree[2 * node];
 		else
@@ -48,19 +48,15 @@ void __stree_init(int node, int b, int e) {
 Num  __stree_query(int node, int b, int e, int i, int j) {
 	Num p1, p2;
 
-	// if the current interval doesn't intersect, the query interval, return -1
 	if (i > e || j < b)
 		return -1;
 
-	// if the current interval is included in the query interval, return stree[node]
 	if (b >= i && e <= j)
 		return stree[node];
 
-	// compute the minimum position in the left and right part of the interval
 	p1 = __stree_query(2*node, b, (b+e)/2, i, j);
 	p2 = __stree_query(2*node+1, (b+e)/2+1, e, i, j);
 
-	// return the position where the overall minimum is
 	if (p1 == -1)
 		return p2;
 	if (p2 == -1)
@@ -73,19 +69,15 @@ Num  __stree_query(int node, int b, int e, int i, int j) {
 int  __stree_query_max(int node, int b, int e, int i, int j) {
 	int p1, p2;
 
-	// if the current interval doesn't intersect, the query interval, return -1
 	if (i > e || j < b)
 		return -1;
 
-	// if the current interval is included in the query interval, return stree[node]
 	if (b >= i && e <= j)
 		return stree_max[node];
 
-	// compute the minimum position in the left and right part of the interval
 	p1 = __stree_query_max(2*node, b, (b+e)/2, i, j);
 	p2 = __stree_query_max(2*node+1, (b+e)/2+1, e, i, j);
 
-	// return the position where the overall minimum is
 	if (p1 == -1)
 		return p2;
 	if (p2 == -1)

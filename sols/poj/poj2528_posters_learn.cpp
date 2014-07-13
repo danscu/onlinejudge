@@ -106,7 +106,7 @@ int main() {
         sort(posters, posters+2*n, cmpPos);
 
         // discretization
-        int k = 0, pre = 0;
+        int k = 0, pre = 0; /* k is number of discretized vals, from 1 */
         for (i=0; i<2*n; i++) {
             if (posters[i].pos != pre) {
                 pre = posters[i].pos;
