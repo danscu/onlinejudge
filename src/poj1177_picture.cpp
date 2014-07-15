@@ -36,11 +36,11 @@ using namespace std;
 
 typedef int Num;
 const Num maxn = 5000;
-const Num INF = numeric_limits<Num>::max();
+const Num INF = numeric_limits<Num>::min();
 
 int n;
 int len;	// new length
-int top, bottom;
+int curX;
 
 struct Line {
 	int x, y1, y2;
@@ -48,7 +48,8 @@ struct Line {
 	Line(int x = 0, int y1 = 0, int y2 = 0, int dir = 0) :
 		x(x), y1(y1), y2(y2), dir(dir) { }
 	bool operator<(const Line &r) const {
-		return x < r.x;
+	    /* left to right, open first */
+		return x < r.x || (x == r.x && dir > r.dir);
 	}
 } seg[maxn*2];
 
@@ -64,8 +65,8 @@ template<int MAX, int VALS, typename Num>
 struct SegTree {
 	struct SegNode {
 		int cover;	/* the value of the interval, -1 if not fully covered */
-		int add;	/* used for delayed update */
 		int hors;	/* number of visible horizontal lines in the interval */
+		bool coverL, coverR;
 	};
 	SegNode tree[MAX];
 	Num Y[VALS];
@@ -73,7 +74,7 @@ struct SegTree {
 	int nY; // total count of Y
 
 	void init(int u, int b, int e) {
-		tree[u].cover = tree[u].add = tree[u].hors = 0;
+		tree[u].cover = tree[u].hors = 0;
 	    if (b + 1 == e)
 	        return;
 	    defmid;
@@ -107,13 +108,8 @@ struct SegTree {
 
 	void pushdown(int u, int b, int e) {
 		if (tree[u].cover != -1) {
-			tree[L(u)].cover = tree[u].cover + tree[u].add;
-			tree[R(u)].cover = tree[u].cover + tree[u].add;
-		}
-		if (tree[u].add) {
-			tree[L(u)].add += tree[u].add;
-			tree[R(u)].add += tree[u].add;
-			tree[u].add = 0;
+			tree[L(u)].cover = tree[u].cover;
+			tree[R(u)].cover = tree[u].cover;
 		}
 	}
 
@@ -131,9 +127,6 @@ struct SegTree {
 	    		len += Y[e] - Y[b];
 
 	    	tree[u].cover += val;
-
-	    	// add deferred value
-	    	tree[u].add += val;
 	        return;
 	    }
 
@@ -171,16 +164,22 @@ struct SegTree {
 
 	// returns uncovered end points
 	int queryE(int u, int b, int e) {
-		if (b + 1 == e)
+		if (b + 1 == e) {
+		    tree[u].coverL = tree[u].coverR = tree[u].cover > 0;
 			return 0;
+		}
 
 		pushdown(u, b, e);
 
 		defmid;
 		int vis = queryE(lson) + queryE(rson);
 
-		if ((tree[L(u)].cover > 0) != (tree[R(u)].cover > 0))
+		if (tree[L(u)].coverR != tree[R(u)].coverL)
 			vis += 1;
+
+		// pushup
+		tree[u].coverL = tree[L(u)].coverL;
+		tree[u].coverR = tree[R(u)].coverR;
 
 		return vis;
 	}
@@ -209,27 +208,24 @@ int main() {
 		int nY = st.discreteInit();
 		sort(seg, seg + 2*n);
 
-		int lastX;
+		int lastX = 0, lastVis = 0;
 		REP(i,2*n) {
 			len = 0;
-			top = seg[i].y1;
-			bottom = seg[i].y2;
+			curX = seg[i].x;
 			st.update(root, 0, nY, seg[i].y1, seg[i].y2, seg[i].dir);
 			peri += len;
-
 			st.updateE(root, 0, nY, seg[i].y1, seg[i].dir);
 			st.updateE(root, 0, nY, seg[i].y2, seg[i].dir);
+
+			if (i < 2*n - 1 && seg[i].x == seg[i+1].x)
+			    continue;
+
 			int vis = st.queryE(root, 0, nY);
-			peri += vis * (i ? seg[i].x - lastX : 0);
+			peri += lastVis * (seg[i].x - lastX);
 			lastX = seg[i].x;
+			lastVis = vis;
 		}
 		printf("%d\n", peri);
 	}
 	return 0;
 }
-
-/* TODO
- * Add variables coverL and coverR, update them in pushup()
- * Compare difference to find edges
- */
- */
