@@ -1,38 +1,65 @@
-#include <iostream>
-#include <cstring>
-#include <cstdio>
 #include <algorithm>
-#include <vector>
-#include <stack>
-#include <set>
-#include <climits>
+#include <cassert>
 #include <cfloat>
+#include <climits>
 #include <cmath>
-#include <map>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
 #include <list>
-#include <fstream>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
 
 using namespace std;
+#ifdef BENCH
 
-#define DBG 1
+# define DBG 0
+# if DBG
+#  define D(x) x;
+# else
+#  define D(x)
+# endif
+#endif // BENCH
 
-#if DBG
-#define D(x) x;
-#else
-#define D(x)
-#endif
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
-const int maxn = 10000;
+typedef int Num;
+const Num maxn = 1000006;
+const Num INF = numeric_limits<Num>::max();
+
+int n;
+Num data[maxn];
+
+Num solve() {
+	return 0;
+}
 
 int main() {
-	// input
+	int T;
+	Num i, j;
 #if BENCH
-	freopen("t.txt", "r", stdin);
+	freopen("template.txt","r",stdin);
 #endif
 
-	int n;
-	while (cin >> n) {
-		
+	scanf("%d", &T);
+	for (int tc = 0; tc < T; tc++) {
+		scanf("%d", &n);
+		REP(i,n) {
+			scanf("%d", &data[i]);
+		}
+		printf("Case #%d\n", tc + 1);
+		printf("%d\n", solve());
 	}
 	return 0;
 }
