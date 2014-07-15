@@ -35,30 +35,55 @@ using namespace std;
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
 typedef int Num;
-const Num maxn = 1000006;
-const Num INF = 10000000;
+const Num maxn = 200006;
+const Num maxm = 200006;
 
-int n;
-Num data[maxn];
+//Num g[maxn][maxn];
+Num p[maxn];
 
-Num solve() {
-	return 0;
+Num n,m;
+
+// 1 if common path, 0 if not
+Num solve(Num x, Num y) {
+    if (x>y) swap(x,y);
+    // assuming y is lower
+
+    int c = y;
+    while (c != 1) {
+        if (x == c)
+            return 1;
+        c = p[c];
+    }
+
+	return c == x;
 }
 
 int main() {
 	int T;
 	Num i, j;
 #if BENCH
-	freopen("template.txt","r",stdin);
+	freopen("files/2_sample_input.txt","r",stdin);
 #endif
 
 	cin >> T;
 	for (int tc = 0; tc < T; tc++) {
-		cin >> n;
-		for (i = 0; i < n; i++) {
-			cin >> data[i];
+		cin >> n >> m;
+//		REP(i,n+1)
+//		    CLRN(g[i],n+1);
+		CLRN(p,n+1);
+		for (i = 0; i < n - 1; i++) {
+		    Num x,y;
+			cin >> x >> y;
+			if (x>y) swap(x,y); // x parent, y child
+//			g[x][y] = 1;
+			p[y] = x; // check if the smaller is always parent
 		}
-		cout << "Case #" << tc + 1 << endl << solve() << endl;
+		cout << "Case #" << tc + 1 << endl;
+		REP(i,m) {
+		    Num x,y;
+		    cin>>x>>y;
+		    cout << solve(x,y) << endl;
+		}
 	}
 	return 0;
 }

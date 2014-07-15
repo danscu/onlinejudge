@@ -1,0 +1,147 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <fstream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+#ifdef BENCH
+
+# define DBG 0
+# if DBG
+#  define D(x) x;
+# else
+#  define D(x)
+# endif
+#endif // BENCH
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+    typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef int Num;
+const Num maxn = 200006;
+const Num maxd = 2000;
+
+const Num DEGREE = 100;
+
+struct Node {
+    int ne;
+    int parent;
+    int e[maxd];
+};
+
+ofstream input("files/ant.in");
+ofstream output("files/ant.out");
+
+Node g[maxn];
+Num p[maxn];
+
+Num n,m;
+
+Num nNodes;
+Num label[maxn];
+
+void addEdge(int x, int y) {
+    g[x].e[g[x].ne++] = y;
+}
+
+void genTree(int parent, int depth) {
+    if (depth > 255)
+        return;
+    int nc;
+    if (depth <= 2)
+        nc = 1+ (rand() % (DEGREE-1));
+    else
+        nc = rand() % DEGREE;
+
+    REP(i, nc) {
+        nNodes++;
+        if (nNodes > n) {
+            nNodes--;
+            return;
+        }
+        addEdge(parent, nNodes);
+        g[nNodes].parent = parent;
+        genTree(nNodes, depth+1);
+    }
+}
+
+void printTree(int parent) {
+    REP(i, g[parent].ne) {
+        int child = g[parent].e[i];
+        input << label[parent] << " " << label[child] << endl;
+        printTree(child);
+    }
+}
+
+// 1 if common path, 0 if not
+Num solve(Num x, Num y) {
+    int c = y;
+    while (c != 0) {
+        if (x == c)
+            return 1;
+        c = g[c].parent;
+    }
+
+    return 0;
+}
+
+int main() {
+    int T;
+    Num i, j;
+
+    T = 5;
+    input << T << endl;
+    for (int tc = 0; tc < T; tc++) {
+        n = maxn - 10; m = maxn - 10; nNodes = 1;
+        output << "Case #" << tc + 1 << endl;
+
+        REP(i,n+2)
+            g[i].ne = 0;
+
+        g[1].parent = 0;
+
+        genTree(1, 1);
+        n = nNodes;
+
+        input << n << " " << m << endl;
+
+        REP(i,n+1)
+            label[i] = i;
+        random_shuffle(label+2, label+n+1);
+
+        printTree(1);
+
+        REP(i,m) {
+            int x = rand() % (n - 2) + 1;
+            int y = rand() % (n - 2) + 1;
+            input << label[x] << " " << label[y] << endl;
+            int common = solve(x,y) || solve(y,x);
+            output << common << endl;
+        }
+
+        input << endl;
+    }
+
+    input.close();
+    output.close();
+
+    return 0;
+}
