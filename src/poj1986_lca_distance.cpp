@@ -39,8 +39,8 @@ using namespace std;
 
 /* Data structures */
 typedef int Num;
-const Num maxn = 50010;
-const Num maxq = 20010;
+const Num maxn = 40010;
+const Num maxq = 10010;
 struct Edge {
     int x, y, next;
     int val;
@@ -48,7 +48,7 @@ struct Edge {
 
 template<int maxn, int maxq>
 struct LCA {
-    Edge map[maxn+1];
+    Edge map[2*(maxn+1)];
     int child[maxn+1], parent[maxn+1], rank[maxn+1], ancestor[maxn+1];
     bool color[maxn+1], visited[maxn+1];
     int cnt;
