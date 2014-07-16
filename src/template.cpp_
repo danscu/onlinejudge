@@ -21,9 +21,9 @@ using namespace std;
 
 # define DBG 0
 # if DBG
-#  define D(x) x;
+#  define D(x) printf
 # else
-#  define D(x)
+#  define D(...) do {} while (0);
 # endif
 #endif // BENCH
 

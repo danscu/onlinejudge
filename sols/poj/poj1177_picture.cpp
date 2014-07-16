@@ -1,3 +1,6 @@
+/* poj 1177 Picture */
+/* segment tree, line sweep, discretize, deferred */
+
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -36,7 +39,6 @@ using namespace std;
 
 typedef int Num;
 const Num maxn = 5000;
-const Num INF = numeric_limits<Num>::min();
 
 int n;
 int len;	// new length
@@ -65,7 +67,6 @@ template<int MAX, int VALS, typename Num>
 struct SegTree {
 	struct SegNode {
 		int cover;	/* the value of the interval, -1 if not fully covered */
-		int hors;	/* number of visible horizontal lines in the interval */
 		bool coverL, coverR;
 	};
 	SegNode tree[MAX];
@@ -74,7 +75,7 @@ struct SegTree {
 	int nY; // total count of Y
 
 	void init(int u, int b, int e) {
-		tree[u].cover = tree[u].hors = 0;
+		tree[u].cover = 0;
 	    if (b + 1 == e)
 	        return;
 	    defmid;
@@ -90,18 +91,10 @@ struct SegTree {
 		Y[iY++] = v;
 	}
 
-	void sortY() {
-		sort(Y, Y + iY);
-	}
-
-	int uniqY() {
-		return unique(Y, Y + iY) - Y;
-	}
-
 	/* returns nY - 1 */
 	int discreteInit() {
-		sortY();
-		nY = uniqY() - 1;
+	    sort(Y, Y + iY);
+		nY = unique(Y, Y + iY) - Y - 1;
 		init(root, 0, nY);
 		return nY;
 	}
@@ -145,25 +138,8 @@ struct SegTree {
 	    pushup(u, b, e);
 	}
 
-	// add endpoint
-	void updateE(int u, int b, int e, Num l, int val) {
-		if (b + 1 == e) {
-			tree[u].hors += val;
-			return;
-		}
-
-		defmid;
-		if (l < Y[mid])
-			updateE(lson, l, val);
-		else
-			updateE(rson, l, val);
-
-		// push up
-		tree[u].hors = tree[L(u)].hors + tree[R(u)].hors;
-	}
-
 	// returns uncovered end points
-	int queryE(int u, int b, int e) {
+	int query(int u, int b, int e) {
 		if (b + 1 == e) {
 		    tree[u].coverL = tree[u].coverR = tree[u].cover > 0;
 			return 0;
@@ -172,7 +148,7 @@ struct SegTree {
 		pushdown(u, b, e);
 
 		defmid;
-		int vis = queryE(lson) + queryE(rson);
+		int vis = query(lson) + query(rson);
 
 		if (tree[L(u)].coverR != tree[R(u)].coverL)
 			vis += 1;
@@ -214,13 +190,9 @@ int main() {
 			curX = seg[i].x;
 			st.update(root, 0, nY, seg[i].y1, seg[i].y2, seg[i].dir);
 			peri += len;
-			st.updateE(root, 0, nY, seg[i].y1, seg[i].dir);
-			st.updateE(root, 0, nY, seg[i].y2, seg[i].dir);
-
 			if (i < 2*n - 1 && seg[i].x == seg[i+1].x)
 			    continue;
-
-			int vis = st.queryE(root, 0, nY);
+			int vis = st.query(root, 0, nY);
 			peri += lastVis * (seg[i].x - lastX);
 			lastX = seg[i].x;
 			lastVis = vis;
