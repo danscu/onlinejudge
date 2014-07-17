@@ -2,13 +2,13 @@ template<int maxn>
 struct DisjointSet {
     int count;
     int parent[maxn+1];
-    int height[maxn+1];
+    int rank[maxn+1];
     int size[maxn+1];
 
     void init(int n) {
         FOR(i, 0, n) { /* check range */
             parent[i] = i;
-            height[i] = 0;
+            rank[i] = 0;
             size[i] = 1;
         }
         count = n;
@@ -26,14 +26,14 @@ struct DisjointSet {
         y = findSet(y);
         if (x==y)
             return;
-        if (height[x] < height[y]) {
+        if (rank[x] < rank[y]) {
             parent[x] = y;
             size[y] += size[x];
         } else {
             parent[y] = x;
             size[x] += size[y];
-            if (height[x] == height[y])
-                ++height[x];
+            if (rank[x] == rank[y])
+                ++rank[x];
         }
         count--;
     }
