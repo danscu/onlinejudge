@@ -20,15 +20,14 @@
 #include <vector>
 
 using namespace std;
-#ifdef BENCH
 
-# define DBG 0
-# if DBG
-#define D printf
-# else
-#define D(...) do {} while (0);
-# endif
+#ifdef BENCH
+#define DEBUG 1 // modify this for enabling/disable debug
+#else
+#define DEBUG 0
 #endif // BENCH
+
+#define D(...) do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
 #define CLR(x) memset(x, 0, sizeof x);
 #define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
@@ -39,8 +38,13 @@ using namespace std;
 
 /* Data structures */
 typedef int Num;
-const Num maxn = 40010;
-const Num maxq = 10010;
+#if !DEBUG
+const Num maxn = 100010;
+const Num maxq = 100100;
+#else
+const Num maxn = 400;
+const Num maxq = 100;
+#endif
 struct Edge {
     int x, y, next;
     int val;
@@ -71,6 +75,8 @@ struct LCA {
     }
 
     void insertQuery(int x, int y) {
+        D("\tq%d:%d\n", x, y);
+        qcnt++;
     	qmap[qcnt].x = x;
     	qmap[qcnt].y = y;
     	qmap[qcnt].next = qfirst[x];
@@ -81,7 +87,6 @@ struct LCA {
     	qmap[qcnt + nq].next = qfirst[y];
 
     	qfirst[y] = qcnt + nq;
-    	qcnt++;
     }
 
     void init(int n) {
@@ -135,7 +140,9 @@ struct LCA {
         	int v = qmap[t].y;
         	if (color[v]) {
         		int lca = ancestor[findSet(v)];
-        		qlca[t % nq] = lca;
+        		D("\t-%d:%d qlca[%d]=%d\n", qmap[t].x, qmap[t].y, t, qlca[1+(t-1) % nq]);
+        		qlca[1+(t-1) % nq] = lca;
+        		D("\t+%d:%d qlca[%d]=%d\n", qmap[t].x, qmap[t].y, t, qlca[1+(t-1) % nq]);
         	}
         }
     }
@@ -161,6 +168,7 @@ int main() {
         REP(j,lca.nq) {
         	scanf("%d%d", &x, &y);
         	lca.insertQuery(x, y);
+        	lca.qlca[j+1] = 0;
         }
         int root = 1; // any node
         CLRN(lca.visited, n+1);
@@ -168,7 +176,7 @@ int main() {
         lca.dist[root] = 0;
         lca.visited[root] = true;
         lca.tarjan(root);
-        REP(j,lca.nq)
+        FOR(j,1,lca.nq)
         	printf("%d\n", lca.dist[lca.qmap[j].x] + lca.dist[lca.qmap[j].y] -
         	               2 * lca.dist[lca.qlca[j]]);
     }

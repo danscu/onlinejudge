@@ -19,13 +19,13 @@
 using namespace std;
 #ifdef BENCH
 
-# define DBG 0
-# if DBG
-#  define D(x) printf
-# else
-#  define D(...) do {} while (0);
-# endif
+#ifdef BENCH
+#define DBG 1 // modify this for enabling/disable debug
+#else
+#define DBG 0
 #endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stderr, __VA_ARGS__); } while (0)
 
 #define CLR(x) memset(x, 0, sizeof x);
 #define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
