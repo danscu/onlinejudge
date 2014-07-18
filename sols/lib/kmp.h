@@ -1,7 +1,7 @@
 template<int maxw>
 struct KMP {
 	int wlen, tlen;
-	char fail[maxw];
+	int fail[maxw];
 	char *w, *t;
 
 	// Pre-process the pattern
