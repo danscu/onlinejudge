@@ -61,10 +61,9 @@ struct DisjointSetWt {
     }
 
     int findSet(int x) {
-        if (parent[x] == x)
-            return x;
-        else
-            return parent[x] = findSet(parent[x]);
+        while (parent[x] != x)
+            x = parent[x];
+        return x;
     }
 
     void unite(int x, int y, int delta) {
@@ -73,8 +72,13 @@ struct DisjointSetWt {
         if (rx == ry)
             return; // impossible in this use case
         /* merge tree y into root(x), while making r(x,y)=pathSum(y)-pathSum(x)=delta */
-        wt[ry] = (3 + pathSum(x) + delta - pathSum(y)) % 3;
+        int vy = pathSum(y);
+        int vx = pathSum(x);
+        D("\t v[%d] = %d  v[%d] = %d\n", y, vy, x, vx);
+        wt[ry] = (3 + vx + delta - vy) % 3;
+        D("\twt[%d] = %d\n", ry, wt[ry]);
         parent[ry] = rx;
+        D("\tparent[%d] = %d\n", ry, rx);
     }
 
     bool same(int x, int y) {
@@ -103,17 +107,24 @@ int main() {
         ds.init(n);
         REP(i,m) {
             scanf("%d%d%d", &cmd, &x, &y);
+            D("\n\t%d,%d,%d\n", cmd, x, y);
             if (x > n || y > n) { ans++; continue; }
             int rx = ds.findSet(x);
             int ry = ds.findSet(y);
+            D("\tsets %d,%d\n", rx, ry);
             if (rx != ry)
                 ds.unite(x,y,cmd - 1);
-            else if ((3 + ds.pathSum(y) - ds.pathSum(x)) % 3 != cmd - 1) {
-                D("\t- %d,%d,%d\n", cmd, x, y);
-                ans++;
+            else {
+                int vx = ds.pathSum(x);
+                int vy = ds.pathSum(y);
+                if ((3 + vy - vx) % 3 != cmd - 1) {
+                    D("\t- %d,%d,%d\n", cmd, x, y);
+                    ans++;
+                }
             }
         }
         printf("%d\n", ans);
+        break;
     }
     return 0;
 }
