@@ -1,5 +1,5 @@
 /* poj 1276 */
-/* dp, 0/1 backsack */
+/* dp, multiple backsack, convert to 0-1 backsack using binary representation */
 
 #include <algorithm>
 #include <cassert>
