@@ -46,12 +46,11 @@ Num solve() {
 }
 
 int main() {
-	int T;
-	Num i, j;
 #if BENCH
 	freopen("template.txt","r",stdin);
 #endif
-
+	int T;
+	Num i, j;
 	scanf("%d", &T);
 	for (int tc = 0; tc < T; tc++) {
 		scanf("%d", &n);
