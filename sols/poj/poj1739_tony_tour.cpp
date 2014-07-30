@@ -111,8 +111,8 @@ int FindMatch(int stat, int from, int delta) {
 
 int work() {
    int now = 0,lst = 1;
-   int p; // bit position of 'left' connector count
-   int q; // bit position of 'up' connector count
+   int p; // bit position of 'left' (input) and 'bottom' (output) connector count
+   int q; // bit position of 'up' (input) and 'right' (output) connector count
    T[now].clear();
    T[now].update(0,1);
    // scan all the cells

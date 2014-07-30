@@ -21,8 +21,6 @@
 #include <bitset>
 #include <queue>
 
-using namespace std;
-
 #ifdef BENCH
 #define DBG 1 // modify this for enabling/disable debug
 #else
@@ -40,31 +38,33 @@ using namespace std;
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
 const int maxn = 100010;
-const int bits = 3; // each state needs 3 bits (may set to 4 bits to make it faster)
+const int m = 2; // two columns
+const int bits = 4; // each state needs 3 bits (may set to 4 bits to make it faster)
 const int mask = (1 << bits) - 1;
-const int maxhash = 3 * (1 << bits); // three states on two columns
-#define params cur, left, up, lnum, unum, val
+const int maxhash = (m + 1) * (1 << bits); // three states on two columns
 
 int n;
-const int m = 2; // two columns
 int s1r, s1c, s2r, s2c, e1r, e1c, e2r, e2c;
 int now, p, q;
+int cur, lnum, unum, tot, val, left, up;
 
 // Hash table for state values
 
-// base4 states x 2 lines
+// base8 states x 2 lines
 //    0: no contour
 //    1: open contour
 //    2: close contour
 //    3: open and close contour (independent branch)
-//    0 - 3: one line, 4 - 7: two lines
+//    0 - 3: one line, 4 - 7: two lines (so far)
 
 enum CState {
 	NOTHING = 0,
 	OPEN = 1, // left or open
 	CLOSE = 2, // right or close
 	IND = 3, // independent
-	TWO_LINES = 4, // two lines
+	MASK = 3,
+	LINE_2 = 4, // this is a plug on LINE 2
+	TWO_LINES = 8, // there are two lines on and before this cell
 };
 
 template<int HASHSZ>
@@ -101,16 +101,49 @@ bool isEnd(int i, int j) {
 	return (i + 1 == e1c && j + 1 == e1r) || (i + 1 == e2c && j + 1 == e2r);
 }
 
-void addNewLine(int cur, int left, int up, int lnum, int unum, int val) {
+int encode(int tot, int bline, int bstat, int rline, int rstat) {
+    int b = tot | bline | bstat;
+    int r = tot | rline | rstat;
+    return cur | (b << p) | (r << q);
 }
 
-void endLine(int cur, int left, int up, int lnum, int unum, int val) {
+void addNewLine(bool first, bool ep) {
+    assert(tot != TWO_LINES);
+    int tot = first ? 0 : TWO_LINES;
+    int line = first ? 0 : LINE_2;
+    if (ep)
+        T[now].update(encode(tot, 0, 0, line, IND), val); // horizontal
+    T[now].update(encode(tot, line, IND, 0, 0), val); // vertical
 }
 
-void mergeLine(int cur, int left, int up, int lnum, int unum, int val) {
+void endLine(int tot, bool ep) {
+    T[now].update(encode(tot, 0, 0, 0, 0), val); // no output plugs
 }
 
-void processSameLine(int cur, int left, int up, int lnum, int unum, int val) {
+void mergeLine() {
+    /*
+     * |     |
+     * |     |
+     * +----[+] merge
+     */
+    T[now].update(encode(0, 0, 0, 0, 0), val); // reduce total to 1
+}
+
+void extendLine(int j, bool close) {
+    if (j == 0) {
+        // left cell
+        if (left) return;
+        if (!up) return;
+        assert(up == IND);
+        if (!close)
+            T[now].update(encode(tot, unum, IND, 0, 0), val); // down
+        T[now].update(encode(tot, 0, 0, unum, IND), val); // right
+    } else {
+        // right cell
+        if (!close && (left ^ up)) { // excluding merging case
+            T[now].update(encode(tot, unum, IND, 0, 0), val); // down
+        }
+    }
 }
 
 void solve() {
@@ -126,7 +159,7 @@ void solve() {
 		p = (m - j) * bits, q = p - bits;
 
 		for (int k = 0;k < T[lst].cnt;k ++) {
-			int val = T[lst].getval(k);
+			val = T[lst].getval(k);
 			int pre = T[lst].getsta(k);
 
 			if (j == 0) {
@@ -134,45 +167,43 @@ void solve() {
 				pre >>= bits;
 			}
 
-			int left = (pre >> p) & mask, up = (pre >> q) & mask;
-			int cur = pre & ~(mask << p) & ~(mask << q);
+			left = (pre >> p) & mask, up = (pre >> q) & mask;
+			cur = pre & ~(mask << p) & ~(mask << q);
 
-			int lnum = left >= TWO_LINES ? TWO_LINES : 0;
-			int unum = up >= TWO_LINES ? TWO_LINES : 0;
-			left -= lnum;
-			up -= unum;
+			lnum = left & LINE_2;
+			unum = up & LINE_2;
+			tot = left & TWO_LINES;
 
-			// TODO check bottom row here
+			left &= MASK;
+			up &= MASK;
 
 			// Add line
-			bool canAddNewLine = (i == 0);
-			if (max(lnum, unum) == 0 && (isStart(i,j) || isEnd(i,j)))
-				canAddNewLine = true;
+			bool oneLine = !tot;
+			bool isEndPt = isStart(i,j) || isEnd(i,j);
 
-			if (canAddNewLine)
-				addNewLine(params);
+			if (oneLine && (isEndPt || i == 0))
+				addNewLine(i == 0 && j == 0, isEndPt);
 
 			// End line
-			bool canEndLine = false; /* (i == n - 1)  && top row state allows */;
-			canEndLine = isStart(i,j) || isEnd(i,j);
-			if (canEndLine)
-				endLine(params);
+			if (!(i == 0 && j == 0) && (isEndPt || i == n - 1))
+				endLine(tot, isEndPt);
 
 			// Merge line
-			bool canMergeLine = false;
+			bool canMergeLine = (j == 1) && lnum != unum && left == IND && up == IND;
 			if (canMergeLine)
-				mergeLine(params);
+				mergeLine();
 
-			// Same line
-			if (lnum == unum) {
-				processSameLine(params);
-			} else if (lnum < unum) {
-				// todo
-			} else if (lnum > unum) {
-				// todo
-			}
+			// Extend line
+			if (i == n - 1) {
+			    // Bottom row
+			    extendLine(j, false);
+			} else
+			    extendLine(j, true); // TODO cycle top and bottom rows
 		}
 	}
+	int nn = T[now].ID[encode(TWO_LINES, 0, NOTHING, 0, NOTHING)];
+	if (nn != -1)
+	    printf("%d\n", nn);
 }
 
 int main() {
