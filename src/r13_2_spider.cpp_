@@ -27,7 +27,7 @@
 #define DBG 0
 #endif // BENCH
 
-#define D(...) do { if (DBG) fprintf(stderr, __VA_ARGS__); } while (0)
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
 
 #define CLR(x) memset(x, 0, sizeof x);
 #define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
@@ -42,6 +42,7 @@ const int m = 2; // two columns
 const int bits = 4; // each state needs 3 bits (may set to 4 bits to make it faster)
 const int mask = (1 << bits) - 1;
 const int maxhash = (m + 1) * (1 << bits); // three states on two columns
+const int hashrng = (1 << (bits * (m + 1)));
 
 int n;
 int s1r, s1c, s2r, s2c, e1r, e1c, e2r, e2c;
@@ -51,28 +52,25 @@ int cur, lnum, unum, tot, val, left, up;
 // Hash table for state values
 
 // base8 states x 2 lines
-//    0: no contour
-//    1: open contour
-//    2: close contour
-//    3: open and close contour (independent branch)
-//    0 - 3: one line, 4 - 7: two lines (so far)
+//    0: no line
+//    1: line_1
+//    2: line_2
+//    4: two lines so far
 
 enum CState {
 	NOTHING = 0,
-	OPEN = 1, // left or open
-	CLOSE = 2, // right or close
-	IND = 3, // independent
+	LINE_1 = 1, // this is a plug for LINE 1
+	LINE_2 = 2, // this is a plug for LINE 2
 	MASK = 3,
-	LINE_2 = 4, // this is a plug on LINE 2
-	TWO_LINES = 8, // there are two lines on and before this cell
+	TWO_LINES = 4, // there are two lines on and before this cell
 };
 
-template<int HASHSZ>
+template<int HASHSZ, int HASHRNG>
 struct Hash {
-   int ID[HASHSZ]; // bucket id of the hash key
+   int ID[HASHRNG]; // bucket id of the hash key
    int key[HASHSZ], val[HASHSZ]; // key and value of the bucket
    int cnt;
-   Hash() : cnt(0) { CLRVN(ID,-1,HASHSZ); }
+   Hash() : cnt(0) { CLRVN(ID,0xFF,HASHRNG); }
    void clear(){
        REP(i,cnt)
            ID[key[i]] = -1;
@@ -91,7 +89,7 @@ struct Hash {
    int getsta(int idx){return key[idx];}
 };
 
-Hash<maxhash> T[2];
+Hash<maxhash,hashrng> T[2];
 
 bool isStart(int i, int j) {
 	return (i + 1 == s1c && j + 1 == s1r) || (i + 1 == s2c && j + 1 == s2r);
@@ -101,23 +99,42 @@ bool isEnd(int i, int j) {
 	return (i + 1 == e1c && j + 1 == e1r) || (i + 1 == e2c && j + 1 == e2r);
 }
 
-int encode(int tot, int bline, int bstat, int rline, int rstat) {
-    int b = tot | bline | bstat;
-    int r = tot | rline | rstat;
-    return cur | (b << p) | (r << q);
+int getcode(int tot, int bline, int rline) {
+	int b = tot | bline;
+	int r = tot | rline;
+	int st = cur | (b << p) | (r << q);
+	return st;
 }
 
-void addNewLine(bool first, bool ep) {
+void encode(int tot, int bline, int rline) {
+    int st = getcode(tot, bline, rline);
+    D("encode(%x, %d)\n", st, val);
+    T[now].update(st, val);
+}
+
+void addNewLine(int j, bool first, bool ep) {
     assert(tot != TWO_LINES);
-    int tot = first ? 0 : TWO_LINES;
-    int line = first ? 0 : LINE_2;
-    if (ep)
-        T[now].update(encode(tot, 0, 0, line, IND), val); // horizontal
-    T[now].update(encode(tot, line, IND, 0, 0), val); // vertical
+    int newtot = first ? 0 : TWO_LINES;
+    int line = first ? LINE_1 : LINE_2;
+    if (ep && !left && j != 1) {
+        D("addline newtot=%d bottom=0 right=%d\n", newtot, line);
+        encode(newtot, 0, line); // horizontal
+    }
+    if (!up) {
+    	D("addline newtot=%d bottom=%d right=0\n", newtot, line);
+    	encode(newtot, line, 0); // vertical
+    }
+    if (first) {
+    	D("addline newtot=%d bottom=%d right=%d\n", newtot, line, line);
+    	encode(newtot, line, line); // top-left corner
+    }
 }
 
 void endLine(int tot, bool ep) {
-    T[now].update(encode(tot, 0, 0, 0, 0), val); // no output plugs
+    if (left || up) { /* cannot apply to null input */
+    	D("endline tot=%d\n",tot);
+    	encode(tot, 0, 0); // no output plugs
+    }
 }
 
 void mergeLine() {
@@ -126,7 +143,8 @@ void mergeLine() {
      * |     |
      * +----[+] merge
      */
-    T[now].update(encode(0, 0, 0, 0, 0), val); // reduce total to 1
+    encode(0, 0, 0); // reduce total to 1 (represented as 0)
+    D("mergeline tot=0 bottom=0 right=0\n");
 }
 
 void extendLine(int j, bool close) {
@@ -134,14 +152,19 @@ void extendLine(int j, bool close) {
         // left cell
         if (left) return;
         if (!up) return;
-        assert(up == IND);
-        if (!close)
-            T[now].update(encode(tot, unum, IND, 0, 0), val); // down
-        T[now].update(encode(tot, 0, 0, unum, IND), val); // right
+        assert(up != 0);
+        if (!close) {
+            encode(tot, unum, 0); // down
+            D("extendline tot=%d bottom=%d right=0\n", unum);
+        }
+        encode(tot, 0, unum); // right
+        D("extendline tot=%d bottom=0 right=%d\n", tot, unum);
     } else {
         // right cell
         if (!close && (left ^ up)) { // excluding merging case
-            T[now].update(encode(tot, unum, IND, 0, 0), val); // down
+        	int num = left ? lnum : unum;
+            D("extendline tot=%d bottom=%d right=0\n", tot, num);
+            encode(tot, num, 0); // down
         }
     }
 }
@@ -158,7 +181,7 @@ void solve() {
 		T[now].clear();
 		p = (m - j) * bits, q = p - bits;
 
-		for (int k = 0;k < T[lst].cnt;k ++) {
+		for (int k = 0; k < T[lst].cnt; k++) {
 			val = T[lst].getval(k);
 			int pre = T[lst].getsta(k);
 
@@ -170,40 +193,38 @@ void solve() {
 			left = (pre >> p) & mask, up = (pre >> q) & mask;
 			cur = pre & ~(mask << p) & ~(mask << q);
 
-			lnum = left & LINE_2;
-			unum = up & LINE_2;
+			lnum = left & MASK;
+			unum = up & MASK;
 			tot = left & TWO_LINES;
 
-			left &= MASK;
-			up &= MASK;
+			D("(%d,%d) pre=%x lnum=%d unum=%d tot=%d val=%d\n", i, j, pre, lnum, unum, tot, val);
 
 			// Add line
 			bool oneLine = !tot;
 			bool isEndPt = isStart(i,j) || isEnd(i,j);
 
 			if (oneLine && (isEndPt || i == 0))
-				addNewLine(i == 0 && j == 0, isEndPt);
+				addNewLine(j, i == 0 && j == 0, isEndPt);
 
 			// End line
 			if (!(i == 0 && j == 0) && (isEndPt || i == n - 1))
 				endLine(tot, isEndPt);
 
 			// Merge line
-			bool canMergeLine = (j == 1) && lnum != unum && left == IND && up == IND;
+			bool canMergeLine = (j == 1) && lnum != unum && lnum && unum;
 			if (canMergeLine)
 				mergeLine();
 
 			// Extend line
 			if (i == n - 1) {
 			    // Bottom row
-			    extendLine(j, false);
+			    extendLine(j, true);
 			} else
-			    extendLine(j, true); // TODO cycle top and bottom rows
+			    extendLine(j, false); // TODO cycle top and bottom rows
 		}
 	}
-	int nn = T[now].ID[encode(TWO_LINES, 0, NOTHING, 0, NOTHING)];
-	if (nn != -1)
-	    printf("%d\n", nn);
+	int c1 = T[now].ID[0];
+	printf("%d\n", T[now].val[c1]);
 }
 
 int main() {
@@ -217,6 +238,7 @@ int main() {
 		scanf("%d", &n);
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
 		scanf("%d%d%d%d", &e1r, &e1c, &e2r, &e2c);
+		D("----Test case #%d----\n", tc+1);
 		solve();
 	}
 	return 0;
