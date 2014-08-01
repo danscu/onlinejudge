@@ -1,5 +1,5 @@
 /* S-TopCoder Round 13 Problem 2
- * 插头 DP + Path Reconstruction
+ * 插头 DP + Path Reconstruction + 2 paths
  */
 #include <algorithm>
 #include <cassert>
@@ -40,7 +40,7 @@
 const int maxn = 100010;
 const int m = 2; // two columns
 const int bits = 2; // each connectivity state needs 2 bits
-const int tbits = 3;
+const int tbits = 4;
 const int mask = (1 << bits) - 1;
 const int maxhash = (m + 1) * (1 << bits); // three states on two columns
 const int hashrng = (1 << (tbits + bits * (m + 1)));
@@ -48,7 +48,7 @@ const int hashrng = (1 << (tbits + bits * (m + 1)));
 int n;
 int s1r, s1c, s2r, s2c, e1r, e1c, e2r, e2c;
 int now, p, q, i, j;
-int cur, lnum, unum, tot, val, left, up;
+int cur, lnum, unum, tot, val, left, up, plugs;
 int parSt;
 int previ, prevj;
 int prevCtx;
@@ -69,9 +69,13 @@ enum CState {
 
 // Context states
 enum TState {
-	TWO_LINES = 1, // there are two lines on and before this cell
-	TOP1_OPEN = 2, // Cell (1,1) has an up plug (for wrapping)
-	TOP2_OPEN = 4, // Cell (2,1) has an up plug (for wrapping)
+	LINES_0 = 0,
+	LINES_1 = 1,
+	LINES_2 = 2,
+	LINES_3 = 3,
+	LINES_MASK = 3,
+	TOP1_OPEN = 4, // Cell (1,1) has an up plug (for wrapping)
+	TOP2_OPEN = 8, // Cell (2,1) has an up plug (for wrapping)
 };
 
 template<int HASHSZ, int HASHRNG>
@@ -104,7 +108,7 @@ struct PathTracker {
     bool hasChild;
 };
 std::map<int,PathTracker> tracker[maxn][m];
-int pathState[maxn][m];
+int pathState[maxn][m]; // state selected at the cell
 
 bool isStart(int i, int j) {
 	return (i + 1 == s1c && j + 1 == s1r) || (i + 1 == s2c && j + 1 == s2r);
@@ -115,7 +119,7 @@ bool isEnd(int i, int j) {
 }
 
 int getcode(int ctx, int bline, int rline, bool setRow1) {
-	int newctx = prevCtx & ~TWO_LINES;
+	int newctx = prevCtx & ~LINES_MASK;
 	if (setRow1) newctx &= ~(TOP1_OPEN | TOP2_OPEN);
 	newctx |= ctx;
 	int st = (newctx << (m + 1) * bits) | cur | (bline << p) | (rline << q);
@@ -137,37 +141,45 @@ void encode(int ctx, int bline, int rline, bool setRow1 = false) {
 }
 
 void addNewLine(bool first, bool ep) {
-    assert(tot != TWO_LINES);
-    int newtot = first ? 0 : TWO_LINES;
-    int line = first ? LINE_1 : LINE_2;
-    if (ep && !left && j != 1) {
+    if (tot == LINES_3)
+        return;
+    if (left || up)
+        return;
+    int newtot = tot + 1;
+    int line = first ? LINE_1 : LINE_2; // CHECK: LINE_2 is used for 2+ cases
+    if (plugs == 1 && !left && j != 1) {
         D("addline newtot=%d bottom=0 right=%d\n", newtot, line);
         encode(newtot, 0, line); // horizontal
     }
-    if (!up) {
+    if (ep && plugs == 1) {
     	D("addline newtot=%d bottom=%d right=0\n", newtot, line);
     	encode(newtot, line, 0); // vertical
-
-    	// top row
-    	if (i == 0) {
-    		if (ep) {
-    			int open = prevCtx | (j == 0 ? TOP1_OPEN : TOP2_OPEN);
-    			D("addline newtot=%d bottom=0 right=0 open=%d\n", newtot, open);
-    			encode(open | newtot, 0, 0, true); // vertical up
-    		} else {
-    			int open = prevCtx | (j == 0 ? TOP1_OPEN : TOP2_OPEN);
-    			D("addline newtot=%d bottom=0 right=0 open=%d\n", newtot, open);
-    			encode(open | newtot, line, 0, true); // vertical up and down
-    		}
-    	}
     }
-    if (first && !ep) {
+
+    // top row
+    if (i == 0) {
+        if (plugs == 1) {
+            int open = prevCtx | (j == 0 ? TOP1_OPEN : TOP2_OPEN);
+            D("addline newtot=%d bottom=0 right=0 open=%d\n", newtot, open);
+            encode(open | newtot, 0, 0, true); // vertical up
+        }
+        if (plugs == 2) {
+            int open = prevCtx | (j == 0 ? TOP1_OPEN : TOP2_OPEN);
+            D("addline newtot=%d bottom=0 right=0 open=%d\n", newtot, open);
+            encode(open | newtot, line, 0, true); // vertical up and down
+        }
+        // TODO
+        // left cell: up + right
+        // right cell: up + left
+    }
+
+    if (first && plugs == 2) {
     	D("addline newtot=%d bottom=%d right=%d\n", newtot, line, line);
     	encode(newtot, line, line); // top-left corner
     }
 }
 
-void endLine(bool ep) {
+void endLine() {
 	bool ok = false;
 	if (left || up) { /* cannot apply to null input */
     	// bottom line
@@ -177,7 +189,7 @@ void endLine(bool ep) {
     	} else
     		ok = true;
     }
-	if (ok) {
+	if (plugs == 0 && ok) {
     	D("endline tot=%d\n",tot);
     	encode(tot, 0, 0); // no output plugs
 	}
@@ -189,29 +201,18 @@ void mergeLine() {
      * |     |
      * +----[+] merge
      */
-    encode(tot, 0, 0); // reduce total to 1 (represented as 0)
-    D("mergeline tot=%d bottom=0 right=0\n", tot);
+    if (plugs == 0) {
+        D("mergeline tot=%d bottom=0 right=0\n", tot - 1);
+        encode(tot - 1, 0, 0); // reduce total to 1 (represented as 0)
+    }
 }
 
 void extendLine(int j, bool close) {
-    if (j == 0) {
-        // left cell
-        if (left) return;
-        if (!up) return;
-        assert(up != 0);
-        if (!close) {
-            D("extendline tot=%d bottom=%d right=0\n", tot, unum);
-            encode(tot, unum, 0); // down
-        }
+    if ((left || up) && plugs == 1) {
+        D("extendline tot=%d bottom=%d right=0\n", tot, unum);
+        encode(tot, unum, 0); // down
         D("extendline tot=%d bottom=0 right=%d\n", tot, unum);
         encode(tot, 0, unum); // right
-    } else {
-        // right cell
-        if (!close && (left ^ up)) { // excluding merging case
-        	int num = left ? lnum : unum;
-            D("extendline tot=%d bottom=%d right=0\n", tot, num);
-            encode(tot, num, 0); // down
-        }
     }
 }
 
@@ -257,8 +258,7 @@ void genPath(int dep, int r, int c, int er1, int ec1, int er2, int ec2) {
 		}
     	// up
     	if (calcxy(x, y, c - 1, r)) {
-			pre = pathState[x][y];
-			pre >>= bits;
+			pre = pathState[x][y] & ~(((1 << (tbits+1))-1) << (m+1) * bits);
 			p = (m - y) * bits, q = p - bits;
 			bottom = (pre >> p) & mask, right = (pre >> q) & mask;
 			if (bottom && !visited[x][y])
@@ -266,8 +266,7 @@ void genPath(int dep, int r, int c, int er1, int ec1, int er2, int ec2) {
     	}
         // left
 		if (calcxy(x, y, c, r - 1)) {
-			pre = pathState[x][y];
-			pre >>= bits;
+			pre = pathState[x][y] & ~(((1 << (tbits+1))-1) << (m+1) * bits);
 			p = (m - y) * bits, q = p - bits;
 			bottom = (pre >> p) & mask, right = (pre >> q) & mask;
 			if (right && !visited[x][y])
@@ -282,8 +281,9 @@ found:
 void printPaths(int st) {
     for (i = n - 1; i >= 0; i--)
         for (j = m - 1; j >= 0; j--) {
-        	pathState[i][j] = st;
-            // follow st to parent
+            // child state
+            pathState[i][j] = st;
+            // parent state
             st = tracker[i][j][st].fromState;
         }
     CLR(visited);
@@ -325,20 +325,24 @@ void solve() {
 
 			lnum = left & MASK;
 			unum = up & MASK;
-			tot = prevCtx & TWO_LINES;
+			tot = prevCtx & LINES_MASK;
+			prevCtx &= ~LINES_MASK;
 
-			D("(%d,%d) pre=%x lnum=%d unum=%d tot=%d val=%d\n", i, j, pre, lnum, unum, tot, val);
+			D("(%d,%d) st=%x ctx=%x lnum=%d unum=%d tot=%d val=%d\n", i, j,
+			        parSt, prevCtx, lnum, unum, tot, val);
 
 			// Add line
-			bool oneLine = !tot;
 			bool isEndPt = isStart(i,j) || isEnd(i,j);
+			plugs = isEndPt ? 1 : 2;
+			plugs -= !!left + !!up;
 
-			if (oneLine && (isEndPt || i == 0))
-				addNewLine(i == 0 && j == 0, isEndPt);
+			if (j == m - 1)
+			    plugs = std::min(1, plugs);
+
+			addNewLine(i == 0 && j == 0, isEndPt);
 
 			// End line
-			if (!(i == 0 && j == 0) && (isEndPt || i == n - 1))
-				endLine(isEndPt);
+			endLine();
 
 			// Merge line
 			bool canMergeLine = (j == 1) && lnum && unum;
@@ -348,16 +352,16 @@ void solve() {
 			// Extend line
 			if (i == n - 1) {
 			    // Bottom row
-			    extendLine(j, true);
+			    extendLine(j, true); // TODO cycle top and bottom rows
 			} else
-			    extendLine(j, false); // TODO cycle top and bottom rows
+			    extendLine(j, false);
 		}
 		previ = i, prevj = j;
 	}
 	cur = 0; // for getcode below
 	REP(row1,4) {
-		int st = T[now].ID[getcode(row1 << 1 | TWO_LINES,0,0,true)];
-		if (st != -1) {
+	    int st = getcode(row1 << 1 | LINES_2,0,0,true);
+		if (T[now].ID[st] != -1) {
 			printPaths(st);
 			return;
 		}
@@ -371,7 +375,7 @@ int main() {
 #endif
 	int T;
 
-	scanf("%d", &T);
+	scanf("%d", &T); T = 1;
 	for (int tc = 0; tc < T; tc++) {
 		scanf("%d", &n);
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
