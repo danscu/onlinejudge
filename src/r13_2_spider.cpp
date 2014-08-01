@@ -46,8 +46,10 @@ const int hashrng = (1 << (bits * (m + 1)));
 
 int n;
 int s1r, s1c, s2r, s2c, e1r, e1c, e2r, e2c;
-int now, p, q;
+int now, p, q, i, j;
 int cur, lnum, unum, tot, val, left, up;
+int parSt;
+int previ, prevj;
 
 // Hash table for state values
 
@@ -76,7 +78,7 @@ struct Hash {
            ID[key[i]] = -1;
        cnt = 0;
    }
-   void update(int k, int v){
+   void update(int k, int v) {
        if (ID[k] == -1) {
            ID[k] = cnt++;
            key[ID[k]] = k;
@@ -90,6 +92,12 @@ struct Hash {
 };
 
 Hash<maxhash,hashrng> T[2];
+struct PathTracker {
+    int fromState;
+    bool hasChild;
+};
+std::map<int,PathTracker> tracker[maxn][m];
+int pathState[maxn][m];
 
 bool isStart(int i, int j) {
 	return (i + 1 == s1c && j + 1 == s1r) || (i + 1 == s2c && j + 1 == s2r);
@@ -110,6 +118,14 @@ void encode(int tot, int bline, int rline) {
     int st = getcode(tot, bline, rline);
     D("encode(%x, %d)\n", st, val);
     T[now].update(st, val);
+
+    std::map<int,PathTracker>::iterator it = tracker[i][j].find(st);
+    if (it == tracker[i][j].end()) {
+        PathTracker &tr(tracker[i][j][st]);
+        tr.fromState = parSt;
+        if (previ >= 0)
+            tracker[previ][prevj][parSt].hasChild = true;
+    }
 }
 
 void addNewLine(int j, bool first, bool ep) {
@@ -169,13 +185,54 @@ void extendLine(int j, bool close) {
     }
 }
 
+int path[maxn*2][2];
+
+void genPath(int dep, int r, int c, int er, int ec) {
+    static int dx[] = {0, -1, 1, 0};
+    static int dy[] = {-1, 0, 0, 1};
+    path[dep][0] = r;
+    path[dep][1] = c;
+    if (r == er && c == ec) {
+        printf("%d\n", dep + 1);
+        REP(i, dep + 1)
+            printf("%d %d\n", path[i][0] + 1, path[i][1] + 1);
+    } else {
+        // search 4 directions and find next cell
+        REP(i,4) {
+            int x = c + dx[i];
+            int y = r + dy[i];
+            if (x < 0) x = n - 1;
+            if (x == n) x = 0;
+            if (y >= 0 && y < m) {
+                // check state at [x][y]
+                int st = pathState[x][y];
+
+            }
+        }
+    }
+}
+
+void printPaths(int st) {
+    int l1i, l1j, l2i, l2j;
+    for (i = n - 1; i >= 0; i--)
+        for (j = m - 1; j >= 0; j--) {
+            // follow st to parent
+            st = tracker[i][j][st].fromState;
+            pathState[i][j] = st;
+        }
+    genPath(0, s1r-1, s1c-1, e1r-1, e1c-1);
+    genPath(0, s2r-1, s2c-1, e2r-1, e2c-1);
+}
+
 void solve() {
 	int lst = 1;
 	now = 0;
+	previ = -1;
 	T[now].clear();
 	// Initial state(s)
 	T[now].update(0, 1);
-	for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) {
+	for (i = 0; i < n; i++) for (j = 0; j < m; j++) {
+	    tracker[i][j].clear();
 		lst = now;
 		now ^= 1;
 		T[now].clear();
@@ -184,6 +241,7 @@ void solve() {
 		for (int k = 0; k < T[lst].cnt; k++) {
 			val = T[lst].getval(k);
 			int pre = T[lst].getsta(k);
+			parSt = pre;
 
 			if (j == 0) {
 				if (mask & pre) continue; // right border should be clear
@@ -222,9 +280,13 @@ void solve() {
 			} else
 			    extendLine(j, false); // TODO cycle top and bottom rows
 		}
+		previ = i, prevj = j;
 	}
-	int c1 = T[now].ID[0];
-	printf("%d\n", T[now].val[c1]);
+	int st = T[now].ID[0];
+	if (st != -1)
+	    printPaths(st);
+	else
+	    printf("-1\n");
 }
 
 int main() {
@@ -238,7 +300,7 @@ int main() {
 		scanf("%d", &n);
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
 		scanf("%d%d%d%d", &e1r, &e1c, &e2r, &e2c);
-		D("----Test case #%d----\n", tc+1);
+		printf("Case #%d\n", tc+1);
 		solve();
 	}
 	return 0;
