@@ -115,12 +115,12 @@ struct PathTracker {
 std::map<int,PathTracker> tracker[maxn][m];
 int pathState[maxn][m]; // state selected at the cell
 
-int cntStart(int i, int j) {
-	return (i + 1 == s1c && j + 1 == s1r) + (i + 1 == s2c && j + 1 == s2r);
+bool isStart(int i, int j) {
+	return (i + 1 == s1c && j + 1 == s1r) || (i + 1 == s2c && j + 1 == s2r);
 }
 
-int cntEnd(int i, int j) {
-	return (i + 1 == e1c && j + 1 == e1r) + (i + 1 == e2c && j + 1 == e2r);
+bool isEnd(int i, int j) {
+	return (i + 1 == e1c && j + 1 == e1r) || (i + 1 == e2c && j + 1 == e2r);
 }
 
 int getcode(int ctx, int bline, int rline, bool setRow1) {
@@ -145,15 +145,13 @@ void encode(int ctx, int bline, int rline, bool setRow1 = false) {
     }
 }
 
-void addNewLine(bool first, int cStart, int cEnd) {
-    assert(!(cStart && cEnd));
-    bool ep = cStart || cEnd;
+void addNewLine(bool first, bool ep) {
     if (tot == LINES_4)
         return;
     if (left || up)
         return;
     int newtot = tot + 1;
-    int line = ep ? (cStart ? LINE_S : LINE_E) : LINE_UNK;
+    int line = ep ? (isStart(i,j) ? LINE_S : LINE_E) : LINE_UNK;
     if (plugs == 1 && !left && j != 1) {
         D("addline newtot=%d bottom=0 right=%d\n", newtot, line);
         encode(newtot, 0, line); // horizontal
@@ -183,46 +181,26 @@ void addNewLine(bool first, int cStart, int cEnd) {
         }
     }
 
-    if (first && plugs == 2 && !cStart && !cEnd) {
+    if (first && plugs == 2) {
     	D("addline newtot=%d bottom=%d right=%d\n", newtot, line, line);
     	encode(newtot, line, line); // top-left corner
     }
-
-    // double starts / ends
-    if (ep && plugs == 2) {
-        if (i != n - 1) {
-            D("addline newtot=%d bottom=%d right=%d\n", newtot, line, line);
-            encode(newtot + 1, line, line); // top-left corner
-        } else {
-            // bottom
-            int open = prevCtx >> (j == 0 ? TOP1_OFFSET : TOP1_OFFSET);
-            open &= MASK;
-            int myplugs = plugs;
-            myplugs -= !!open;
-            if (open && open != line && tot > 0) {
-                if (!myplugs) {
-                    D("addline tot=%d bottom=0 right=0\n", tot);
-                    encode(tot, 0, 0); // connects with top, no more plugs
-                } else if (myplugs == 1) {
-                    D("addline tot=%d bottom=0 right=%d\n", tot, line);
-                    encode(tot, 0, line); // connects with top and right
-                }
-            }
-        }
-    }
 }
 
-void endLine(int cStart, int cEnd) {
-	int endType = cStart ? LINE_S : LINE_E;
+void endLine() {
+	bool ok = false;
+	if (left && up)
+	    return; // cannot end two lines
 	int line = left ? left : up;
-
-	if (plugs == 0 && left && up && left == up && (cStart == 2 || cEnd == 2) && tot > 2) {
-	    D("endline (double) tot=%d\n",tot-2);
-	    encode(tot-2, 0, 0); // no output plugs
-	    return;
+	if (isStart(i,j)) {
+	    if (line == LINE_E || line == LINE_UNK)
+	        ok = true;
+	} else {
+	    if (line == LINE_S || line == LINE_UNK)
+	        ok = true;
 	}
 
-	if (plugs == 0 && line != endType) {
+	if (plugs == 0 && ok) {
     	D("endline tot=%d\n",tot);
     	encode(tot, 0, 0); // no output plugs
 	}
@@ -234,39 +212,29 @@ void mergeLine() {
      * |     |
      * +----[+] merge
      */
-
-    int line = unum;
-    if (plugs == 0 && line && lnum != line) {
+    if (plugs == 0) {
         D("mergeline tot=%d bottom=0 right=0\n", tot - 1);
         encode(tot - 1, 0, 0); // reduce total to 1 (represented as 0)
     }
-
-    if (i == n - 1) {
-        // bottom
-        int open = prevCtx >> (j == 0 ? TOP1_OFFSET : TOP1_OFFSET);
-        open &= MASK;
-        int myplugs = plugs;
-        myplugs -= !!open;
-        if (!myplugs && open && open != lnum && tot > 0) {
-            D("mergeline tot=%d bottom=0 right=0\n", tot);
-            encode(tot, 0, 0); // connects with top, no more plugs
-        }
-    }
 }
 
-void extendLine(int j, bool bottom, int cStart, int cEnd) {
+void extendLine(int j, bool bottom) {
     if (left && up) return;
-    assert(!(cStart && cEnd));
-    if (!left && !up) return;
-
     int line = left ? left : up;
 
-    int myplugs = plugs;
-    int open;
+    if ((left || up) && plugs == 1) {
+        D("extendline tot=%d bottom=%d right=0\n", tot, line);
+        encode(tot, line, 0); // down
+        if (j != m - 1) {
+            D("extendline tot=%d bottom=0 right=%d\n", tot, line);
+            encode(tot, 0, line); // right
+        }
+    }
+
     if (bottom) {
-        open = prevCtx >> (j == 0 ? TOP1_OFFSET : TOP1_OFFSET);
+        int open = prevCtx >> (j == 0 ? TOP1_OFFSET : TOP1_OFFSET);
         open &= MASK;
-        myplugs -= !!open;
+        int myplugs = plugs - (open ? 1:0);
         if (open && open != line && tot > 0) {
             if (!myplugs) {
                 D("extendline tot=%d bottom=0 right=0\n", tot-1);
@@ -275,15 +243,6 @@ void extendLine(int j, bool bottom, int cStart, int cEnd) {
                 D("extendline tot=%d bottom=0 right=%d\n", tot-1, line);
                 encode(tot - 1, 0, line); // connects with top and right
             }
-        }
-    }
-
-    if ((left || up) && myplugs == 1) {
-        D("extendline tot=%d bottom=%d right=0\n", tot, line);
-        encode(tot, line, 0); // down
-        if (j != m - 1) {
-            D("extendline tot=%d bottom=0 right=%d\n", tot, line);
-            encode(tot, 0, line); // right
         }
     }
 }
@@ -305,9 +264,9 @@ void genPath(int r, int c, int er1, int ec1, int er2, int ec2) {
     for (int x = c, y = r;
          c = x, r = y,
          path[dep][0] = r, path[dep][1] = c,
-         visited[c][r] = true,
          !(r == er1 && c == ec1) & !(r == er2 && c == ec2);) {
         D("genPath dep=%d x=%d y=%d\n", dep, c, r);
+        visited[c][r] = true;
         dep++;
         // search 4 directions and find next cell
         int pre, bottom, right;
@@ -362,8 +321,6 @@ void genPath(int r, int c, int er1, int ec1, int er2, int ec2) {
     printf("%d\n", dep + 1);
     REP(i, dep + 1)
         printf("%d %d\n", path[i][0] + 1, path[i][1] + 1);
-    if (cntEnd(path[dep][1], path[dep][0]) == 2)
-        visited[path[dep][1]][path[dep][0]] = false;
 }
 
 void printPaths(int st) {
@@ -378,6 +335,7 @@ void printPaths(int st) {
     CLR(visited);
     D("path1--\n");
     genPath(s1r-1, s1c-1, e1r-1, e1c-1, e2r-1, e2c-1);
+    CLR(visited);
     D("path2--\n");
     genPath(s2r-1, s2c-1, e1r-1, e1c-1, e2r-1, e2c-1);
 }
@@ -420,26 +378,25 @@ void solve() {
 			        parSt, prevCtx, lnum, unum, tot, val);
 
 			// Add line
-			int cStart = cntStart(i,j);
-			int cEnd = cntEnd(i,j);
-			plugs = (cStart || cEnd) ? cStart + cEnd : 2; // Assume start != end
+			bool isEndPt = isStart(i,j) || isEnd(i,j);
+			plugs = isEndPt ? 1 : 2;
 			plugs -= !!left + !!up;
 
-			addNewLine(i == 0 && j == 0, cStart, cEnd);
+			addNewLine(i == 0 && j == 0, isEndPt);
 
 			// End line
-			if (cStart || cEnd)
-			    endLine(cStart, cEnd);
+			if (isEndPt)
+			    endLine();
 
 			// Extend line
 			if (i == n - 1) {
 			    // Bottom row
-			    extendLine(j, true, cStart, cEnd);
+			    extendLine(j, true);
 			} else
-			    extendLine(j, false, cStart, cEnd);
+			    extendLine(j, false);
 
             // Merge line
-            bool canMergeLine = (j == 1) && lnum;
+            bool canMergeLine = (j == 1) && lnum && unum && lnum != unum;
             if (canMergeLine)
                 mergeLine();
 		}
@@ -458,7 +415,7 @@ void solve() {
 
 int main() {
 #if BENCH
-    freopen("files/r13_2_rand.txt","r",stdin);
+    freopen("files/r13_2_test.txt","r",stdin);
 #endif
 	int T;
 

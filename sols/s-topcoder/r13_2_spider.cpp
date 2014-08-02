@@ -388,8 +388,8 @@ void solve() {
 		previ = i, prevj = j;
 	}
 	cur = 0; // for getcode below
-	REP(row1,4) {
-	    int st = getcode(row1 << 1 | LINES_2,0,0,true);
+	REP(row1,(1<<4)) {
+	    int st = getcode(row1 << TOP1_OFFSET | LINES_2,0,0,true);
 		if (T[now].ID[st] != -1) {
 			printPaths(st);
 			return;
@@ -400,7 +400,7 @@ void solve() {
 
 int main() {
 #if BENCH
-    freopen("files/r13_2_sample.txt","r",stdin);
+    freopen("files/r13_2_test.txt","r",stdin);
 #endif
 	int T;
 

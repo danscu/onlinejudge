@@ -419,17 +419,22 @@ int main() {
 	int T;
 
 	T = 20;
+	printf("%d\n",T);
 	for (int tc = 0; tc < T; tc++) {
-	    n = rand() % 10;
-		scanf("%d", &n);
-		s1r = rand() % 2;
+	    n = rand() % (10 - 4) + 4;
+		printf("%d\n", n);
+		s1r = rand() % 2 + 1;
 		s1c = rand() % n + 1;
-		s1r = rand() % 2;
-		s1c = rand() % n + 1;
-		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
-		scanf("%d%d%d%d", &e1r, &e1c, &e2r, &e2c);
-		printf("Case #%d\n", tc+1);
-		solve();
+		s2r = rand() % 2 + 1;
+		s2c = rand() % n + 1;
+
+        e1r = rand() % 2 + 1;
+        e1c = rand() % n + 1;
+        e2r = rand() % 2 + 1;
+        e2c = rand() % n + 1;
+
+		printf("%d %d %d %d\n", s1r, s1c, s2r, s2c);
+		printf("%d %d %d %d\n", e1r, e1c, e2r, e2c);
 	}
 	return 0;
 }

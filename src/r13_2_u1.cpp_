@@ -480,7 +480,7 @@ void printSolution()
 int main(int argc, char** argv)
 {
 #if BENCH
-    freopen("files/r13_2_test.txt","r",stdin);
+    freopen("files/r13_2_rand.txt","r",stdin);
 #endif
     int T = 0;
     scanf("%d", &T);
