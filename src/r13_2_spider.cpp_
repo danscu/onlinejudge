@@ -1,6 +1,11 @@
 /* S-TopCoder Round 13 Problem 2
  * 插头 DP + Path Reconstruction + 2 paths
  */
+
+/*
+ * TODO: Add 4 UNK line states so they can be individually changed
+ * when ending into an end point
+ */
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -22,7 +27,7 @@
 #include <queue>
 
 #ifdef BENCH
-#define DBG 0 // modify this for enabling/disable debug
+#define DBG 1 // modify this for enabling/disable debug
 #else
 #define DBG 0
 #endif // BENCH
@@ -57,8 +62,8 @@ int prevCtx;
 
 // Connectivity States: base4 states x 2 lines
 //    0: no line
-//    1: line_1
-//    2: line_2
+//    1: line_s
+//    2: line_e
 //    4: two lines so far
 enum CState {
 	NOTHING = 0,
@@ -146,12 +151,12 @@ void encode(int ctx, int bline, int rline, bool setRow1 = false) {
 }
 
 void addNewLine(bool first, int cStart, int cEnd) {
-    assert(!(cStart && cEnd));
     bool ep = cStart || cEnd;
     if (tot == LINES_4)
         return;
     if (left || up)
         return;
+
     int newtot = tot + 1;
     int line = ep ? (cStart ? LINE_S : LINE_E) : LINE_UNK;
     if (plugs == 1 && !left && j != 1) {
@@ -161,6 +166,14 @@ void addNewLine(bool first, int cStart, int cEnd) {
     if (ep && plugs == 1) {
     	D("addline newtot=%d bottom=%d right=0\n", newtot, line);
     	encode(newtot, line, 0); // vertical
+    }
+
+    // start == end
+    if (cStart && cEnd) {
+    	assert(cStart == 1 && cEnd == 1 && plugs == 2);
+    	D("addline newtot=%d bottom=0 right=0\n", newtot);
+    	    	encode(newtot, 0, 0); // single point
+    	return;
     }
 
     // top row
@@ -183,7 +196,8 @@ void addNewLine(bool first, int cStart, int cEnd) {
         }
     }
 
-    if (first && plugs == 2 && !cStart && !cEnd) {
+    // corner
+    if (plugs == 2 && !cStart && !cEnd) {
     	D("addline newtot=%d bottom=%d right=%d\n", newtot, line, line);
     	encode(newtot, line, line); // top-left corner
     }
@@ -213,6 +227,8 @@ void addNewLine(bool first, int cStart, int cEnd) {
 }
 
 void endLine(int cStart, int cEnd) {
+	if (cStart && cEnd) return;
+
 	int endType = cStart ? LINE_S : LINE_E;
 	int line = left ? left : up;
 
@@ -223,20 +239,23 @@ void endLine(int cStart, int cEnd) {
 	}
 
 	if (plugs == 0 && line != endType) {
+		// TODO: modify previous UNK to endType
+		assert(line != LINE_UNK && "TODO: Need to change UNK to line type");
     	D("endline tot=%d\n",tot);
     	encode(tot, 0, 0); // no output plugs
 	}
 }
 
-void mergeLine() {
+void mergeLine(int cStart, int cEnd) {
+	if (cStart && cEnd) return;
+
     /*
      * |     |
      * |     |
      * +----[+] merge
      */
-
     int line = unum;
-    if (plugs == 0 && line && lnum != line) {
+    if (plugs == 0 && line && (lnum != line || (lnum == LINE_UNK && line == LINE_UNK))) {
         D("mergeline tot=%d bottom=0 right=0\n", tot - 1);
         encode(tot - 1, 0, 0); // reduce total to 1 (represented as 0)
     }
@@ -247,7 +266,7 @@ void mergeLine() {
         open &= MASK;
         int myplugs = plugs;
         myplugs -= !!open;
-        if (!myplugs && open && open != lnum && tot > 0) {
+        if (!myplugs && open && (open != lnum || (open == LINE_UNK && lnum == LINE_UNK)) && tot > 0) {
             D("mergeline tot=%d bottom=0 right=0\n", tot);
             encode(tot, 0, 0); // connects with top, no more plugs
         }
@@ -256,7 +275,7 @@ void mergeLine() {
 
 void extendLine(int j, bool bottom, int cStart, int cEnd) {
     if (left && up) return;
-    assert(!(cStart && cEnd));
+    if (cStart && cEnd) return;
     if (!left && !up) return;
 
     int line = left ? left : up;
@@ -441,7 +460,7 @@ void solve() {
             // Merge line
             bool canMergeLine = (j == 1) && lnum;
             if (canMergeLine)
-                mergeLine();
+                mergeLine(cStart, cEnd);
 		}
 		previ = i, prevj = j;
 	}
@@ -456,6 +475,12 @@ void solve() {
 	printf("-1\n");
 }
 
+bool invalid() {
+	if ((s1r == s2r && s1c == s2c) || (e1r == e2r && e1c == e2c))
+		return true;
+	return false;
+}
+
 int main() {
 #if BENCH
     freopen("files/r13_2_rand.txt","r",stdin);
@@ -468,7 +493,9 @@ int main() {
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
 		scanf("%d%d%d%d", &e1r, &e1c, &e2r, &e2c);
 		printf("Case #%d\n", tc+1);
-		solve();
+		if (invalid())
+			printf("-1\n");
+		else solve();
 	}
 	return 0;
 }
