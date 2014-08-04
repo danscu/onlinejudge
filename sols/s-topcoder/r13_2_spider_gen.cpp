@@ -421,7 +421,8 @@ int main() {
 	T = 20;
 	printf("%d\n",T);
 	for (int tc = 0; tc < T; tc++) {
-	    n = rand() % (10 - 4) + 4;
+		const int maxn = 10;
+	    n = (rand() % ((maxn - 4)/2))*2 + 4;
 		printf("%d\n", n);
 		s1r = rand() % 2 + 1;
 		s1c = rand() % n + 1;
