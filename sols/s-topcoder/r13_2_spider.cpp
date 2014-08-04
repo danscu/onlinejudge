@@ -365,8 +365,8 @@ void mergeLine(int cStart, int cEnd) {
         	open = prevCtx >> (j == 0 ? TOP1_OFFSET : TOP2_OFFSET); // refresh
         	open &= MASK;
         	if (open != left && tot > 0) {
-        		D("mergeline tot=%d bottom=%d right=0\n", tot, open);
-        		encode(tot, open, 0); // connects with top, no more plugs
+        		D("mergeline tot=%d bottom=%d right=0\n", tot, 1);
+        		encode(tot, 1, 0); // connects with top, no more plugs
         	}
         }
         if (unk)
@@ -398,8 +398,8 @@ void extendLine(int j, bool bottom, int cStart, int cEnd) {
     }
 
     if ((left || up) && myplugs == 1) {
-        D("extendline tot=%d bottom=%d right=0\n", tot, line);
-        encode(tot, line, 0); // down
+        D("extendline tot=%d bottom=%d right=0\n", tot, 1);
+        encode(tot, 1, 0); // down
         if (j != m - 1) {
             D("extendline tot=%d bottom=0 right=%d\n", tot, line);
             encode(tot, 0, line); // right
@@ -435,7 +435,7 @@ void genPath(int r, int c, int er1, int ec1, int er2, int ec2) {
         p = (m - r) * bits, q = p - bits;
         bottom = (pre >> p) & mask, right = (pre >> q) & mask;
         if (bottom) {
-            x = c + 1, y = r;
+            x = c + 1, y = r; if (x == n) x = 0;
             if (!visited[x][y])
                 continue;
         }
@@ -569,11 +569,7 @@ void solve() {
 	REP(top,(1<<(bits*2))) {
 		int st1 = (top >> bits) & mask;
 		int st2 = top & mask;
-		int stb1 = st1, stb2 = st2;
-		if (st1 == LINE_E) stb1 = LINE_S;
-		else if (st1 == LINE_S) stb1 = LINE_E;
-		if (st2 == LINE_E) stb2 = LINE_S;
-		else if (st2 == LINE_S) stb2 = LINE_E;
+		int stb1 = !!st1, stb2 = !!st2;
 		int stb = stb1 << bits | stb2;
 		int st = getcode(top << TOP1_OFFSET | LINES_2, stb, 0, true);
 		D("checking state %x\n", st);
