@@ -79,6 +79,9 @@ enum CState {
 };
 
 // Context states
+#define TOP1_OFFSET 3
+#define TOP2_OFFSET 6
+
 enum TState {
 	LINES_0 = 0,
 	LINES_1 = 1,
@@ -86,12 +89,9 @@ enum TState {
 	LINES_3 = 3,
 	LINES_4 = 4,
 	LINES_MASK = 7,           // 3 bits
-	TOP1_MASK = MASK << 3,    // Cell (1,1) has an up plug of this line type
-	TOP2_MASK = MASK << 6 	  // Cell (2,1) has an up plug of this line type
+	TOP1_MASK = MASK << TOP1_OFFSET,    // Cell (1,1) has an up plug of this line type
+	TOP2_MASK = MASK << TOP2_OFFSET 	  // Cell (2,1) has an up plug of this line type
 };
-
-#define TOP1_OFFSET 3
-#define TOP2_OFFSET 6
 
 template<int HASHSZ, int HASHRNG>
 struct Hash {
@@ -200,11 +200,10 @@ void replaceUnk(int unk, int line) {
 	if (left == unk) left = line;
 	if (up == unk) up = line;
 	// replace prevCtx (top)
-	for (int p = toff + TOP1_OFFSET; p < tbits + toff; p += 3) {
+	for (int p = TOP1_OFFSET; p < tbits; p += 3) {
 		int st = (prevCtx >> p) & mask;
 		if (st == unk)
-			prevCtx = (prevCtx & ~mm) | line << p;
-		mm <<= 3;
+			prevCtx = (prevCtx & ~(mask << p)) | line << p;
 	}
 }
 
@@ -398,8 +397,8 @@ void extendLine(int j, bool bottom, int cStart, int cEnd) {
     }
 
     if ((left || up) && myplugs == 1) {
-        D("extendline tot=%d bottom=%d right=0\n", tot, 1);
-        encode(tot, 1, 0); // down
+        D("extendline tot=%d bottom=%d right=0\n", tot, line);
+        encode(tot, line, 0); // down
         if (j != m - 1) {
             D("extendline tot=%d bottom=0 right=%d\n", tot, line);
             encode(tot, 0, line); // right
@@ -535,8 +534,8 @@ void solve() {
 
 			D("(%d,%d) st=%x ctx=%x left=%d up=%d tot=%d val=%d top1=%d top2=%d\n", i, j,
 			        parSt, prevCtx, left, up, tot, val,
-			        (prevCtx > TOP1_OFFSET) & mask,
-			        (prevCtx > TOP2_OFFSET) & mask);
+			        (prevCtx >> TOP1_OFFSET) & mask,
+			        (prevCtx >> TOP2_OFFSET) & mask);
 
 			// Add line
 			int cStart = cntStart(i,j);
@@ -567,9 +566,12 @@ void solve() {
 	cur = 0; // for getcode below
 	p = bits, q = 0;
 	REP(top,(1<<(bits*2))) {
-		int st1 = (top >> bits) & mask;
-		int st2 = top & mask;
-		int stb1 = !!st1, stb2 = !!st2;
+		int st1 = top & mask;
+		int st2 = (top >> bits) & mask;
+		int stb1 = st1;
+		if (stb1) stb1 = stb1 == LINE_E ? LINE_S : LINE_E;
+		int stb2 = st2;
+		if (stb2) stb2 = stb2 == LINE_E ? LINE_S : LINE_E;
 		int stb = stb1 << bits | stb2;
 		int st = getcode(top << TOP1_OFFSET | LINES_2, stb, 0, true);
 		D("checking state %x\n", st);
