@@ -418,21 +418,28 @@ int main() {
 #endif
 	int T;
 
-	T = 20;
+	T = 100;
 	printf("%d\n",T);
 	for (int tc = 0; tc < T; tc++) {
-		const int maxn = 10;
+		const int maxn = 8;
 	    n = (rand() % ((maxn - 4)/2))*2 + 4;
 		printf("%d\n", n);
-		s1r = rand() % 2 + 1;
-		s1c = rand() % n + 1;
-		s2r = rand() % 2 + 1;
-		s2c = rand() % n + 1;
+		bool redo;
 
-        e1r = rand() % 2 + 1;
-        e1c = rand() % n + 1;
-        e2r = rand() % 2 + 1;
-        e2c = rand() % n + 1;
+		do {
+            s1r = rand() % 2 + 1;
+            s1c = rand() % n + 1;
+            s2r = rand() % 2 + 1;
+            s2c = rand() % n + 1;
+
+            e1r = rand() % 2 + 1;
+            e1c = rand() % n + 1;
+            e2r = rand() % 2 + 1;
+            e2c = rand() % n + 1;
+
+            redo = s1r == s2r && s1c == s2c;
+            redo |= e1r == e2r && e1c == e2c;
+		} while (redo);
 
 		printf("%d %d %d %d\n", s1r, s1c, s2r, s2c);
 		printf("%d %d %d %d\n", e1r, e1c, e2r, e2c);

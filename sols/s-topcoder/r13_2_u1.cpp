@@ -5,6 +5,7 @@
 
 static const int kMaxN = 100000;
 int mN = 0;
+int good_cases=0;
 struct Cell
 {
     int i, j;
@@ -471,16 +472,19 @@ void printSolution()
         printf("%d\n", dist);
         //assert(int(path - mPath) == dist);
         for (const Cell* curCell = mPath; curCell != path; ++curCell)
-            printf("%d %d\n", curCell->i, curCell->j);
+            printf("%d %d\n", curCell->i, curCell->j);        
     }
-    else
+    else {
         printf("-1\n");
+        good_cases--;
+    }
+	good_cases++;
 }
 
 int main(int argc, char** argv)
 {
 #if BENCH
-    freopen("files/r13_2_test.txt","r",stdin);
+    freopen("files/r13_2_rand.txt","r",stdin);
 #endif
     int T = 0;
     scanf("%d", &T);
@@ -513,6 +517,8 @@ int main(int argc, char** argv)
         else
             printSolution();
     }
+
+    printf("Good cases: %d\n", good_cases);
 
     return 0;
 }
