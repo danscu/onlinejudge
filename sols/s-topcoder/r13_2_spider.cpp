@@ -22,9 +22,6 @@
 #include <bitset>
 #include <queue>
 
-#define CASE_LIMIT 1
-const int MAXCASES = 30;
-
 #ifdef BENCH
 #define DBG 0 // modify this for enabling/disable debug
 #else
@@ -123,6 +120,20 @@ struct PathTracker {
 };
 std::map<int,PathTracker> tracker[maxn][m];
 int pathState[maxn][m]; // state selected at the cell
+
+// For simplification
+struct Pt {
+	int r, c;
+	bool start;
+	Pt(int r = 0, int c = 0, int start = false) : r(r), c(c), start(start) { }
+	bool operator<(const Pt& rhs) const {
+		return c < rhs.c;
+	}
+} P[5];
+
+int realN, Q[5]; // Q is the compacted column values
+bool simplified = false;
+void printOriginal(int dep);
 
 int cntStart(int i, int j) {
 	return (i + 1 == s1c && j + 1 == s1r) + (i + 1 == s2c && j + 1 == s2r);
@@ -435,9 +446,12 @@ void genPath(int r, int c, int er1, int ec1, int er2, int ec2) {
         assert(false);
     }
 
-    printf("%d\n", dep + 1);
-    REP(i, dep + 1)
-        printf("%d %d\n", path[i][0] + 1, path[i][1] + 1);
+    if (!simplified) {
+		printf("%d\n", dep + 1);
+		REP(i, dep + 1)
+			printf("%d %d\n", path[i][0] + 1, path[i][1] + 1);
+    } else
+    	printOriginal(dep);
 }
 
 void printPaths(int st) {
@@ -542,16 +556,190 @@ bool invalid() {
 	return false;
 }
 
+/*
+ * Simplifier related
+ */
+bool findAnchor(int r, int c, int &cOrg) {
+	if (c == 0) {
+		cOrg = 0; return true;
+	} else if (c == n - 1) {
+		cOrg = realN - 1;
+		return true;
+	}
+	REP(i,4)
+		if (Q[i] - 1 == c) {
+			cOrg = P[i].c - 1;
+			return true;
+		}
+	return false;
+}
+
+int truePath[maxn][2];
+int trueLen;
+
+void pushPath(int r, int c) {
+	truePath[trueLen][0] = r, truePath[trueLen][1] = c, trueLen++;
+	D("Truepath[%d] = (%d,%d)\n", trueLen, r, c);
+	assert(r >= 0 && c >= 0);
+}
+
+void printOriginal(int dep) {
+	int cOrg;
+	int pr, pc;
+	trueLen = 0;
+
+	// 1. analyze the simplified solution; 
+	// record starting positions of left (LL or LULD or LDLU ) and right units (RR or RURD or RDRU), and when they end, repeated can be thrown away
+        // 2. Find next alignment col (some columne with S or E cells)
+	// 3. copy the lines until the starting of the recurring part
+	// 3. extend the simplified solution to near the next anchor column
+	// 4. copy the rest of the lines until the next anchor point
+	// If not done, repeat from  3
+
+	int startC;
+	enum Dir {NONE, L, R, U, D};
+	int lastI, cycleStart;
+	REP(i, dep + 1) {
+		D("Analyzing (%d,%d)\n", path[i][0], path[i][1]);
+		bool anchor = findAnchor(path[i][0], path[i][1], cOrg);
+		if (i == 0) {
+			lastI = i;
+			startC = cOrg;
+			pr = path[i][0], pc = cOrg;
+			pushPath(pr,pc);
+			continue;
+		}
+		if (anchor) {
+			D("Anchor\n");
+			// Find L or R for the current anchor
+			Dir need = cOrg > startC ? R : L;
+			Dir hor = NONE, ver = NONE;
+			int cver, clen;
+			cycleStart = -1; // no cycle (yet)
+			for (j = lastI + 1; j <= i; j++) {
+				Dir cur;
+				if (path[j][0] - path[j-1][0] == 1)
+					cur = D;
+				else if (path[j][0] - path[j-1][0] == -1)
+					cur = U;
+				else if (path[j][1] - path[j-1][1] == -1)
+					cur = L;
+				else if (path[j][1] - path[j-1][1] == 1)
+					cur = R;
+				else cur = NONE; // could be wrapping
+				D("direction at (%d,%d) is %d\n", path[j][0], path[j][1], cur);
+				if (cur == L || cur == R) {
+					if (hor == cur && cur == need)
+						if (ver == NONE) {
+							// found 2-cycle
+							clen = 2; cycleStart = j - clen + 1;
+							break;
+						}
+					if (hor != cur)
+						ver = NONE, cver = 0;
+					hor = cur;
+				} else {
+					if ((ver == D || ver == U) && ver != cur) {
+						// 4-cycle
+						clen = 4; cycleStart = j - clen + 1;
+						break;
+					} else
+						cver = 0;
+					ver = cur;
+				}
+			} // j
+
+			// Copy the line and extend cycle
+			int extendLen = cOrg - startC - (path[i][1] - path[lastI][1]);
+			if (abs(cOrg - startC) == realN - 1 && abs(path[i][1] - path[lastI][1]) == n - 1)
+				extendLen = 0;
+			assert(extendLen % 2 == 0 && "Must be even");
+			assert(!extendLen || cycleStart != -1); // if extension is needed, cycle must be found
+			int k = lastI + 1;
+			while (k <= i) {
+				if (k == cycleStart) {
+					// start extending
+					REP(rr, 1 + abs(extendLen) / 2) {
+						REP(cc, clen) {
+							pr += path[k+cc][0] - path[k+cc-1][0], pc += path[k+cc][1] - path[k+cc-1][1];
+							pushPath(pr,pc);
+						}
+					}
+					k += clen; continue;
+				} else {
+					int deltac = path[k][1] - path[k-1][1];
+					pr += path[k][0] - path[k-1][0];
+					if (path[k-1][0] == 0 && deltac == n - 1) {
+						assert(pc == 0);
+						pc = realN - 1;
+					} if (path[k-1][0] == n - 1 && deltac == -(n - 1)) {
+						assert(pc == realN - 1);
+						pc = 0;
+					} else pc += deltac;
+					pushPath(pr,pc);
+				}
+				k++;
+			}
+			lastI = i, startC = cOrg;
+		} // if anchor
+	}
+
+	printf("%d\n", trueLen);
+	REP(i, trueLen)
+		printf("%d %d\n", truePath[i][0]+1, truePath[i][1]+1);
+}
+
+void simplifier() {
+	realN = n;
+	P[0] = Pt(s1r, s1c, true);
+	P[1] = Pt(s2r, s2c, true);
+	P[2] = Pt(e1r, e1c, false);
+	P[3] = Pt(e2r, e2c, false);
+	std::sort(P, P + 4);
+	P[4] = Pt(0, n, false); // boundary
+
+	int lastC = 0, lastQ = 0;
+	int startId = 0, endId = 0;
+
+	// Simplify the problem
+	REP(i,5) {
+		Q[i] = lastQ + (P[i].c - lastC);
+
+		if (P[i].c - lastC >= 5) {
+			int reduce = ((P[i].c - lastC) - 5) / 2 * 2;
+			Q[i] -= reduce;
+		}
+		lastC = P[i].c;
+		lastQ = Q[i];
+
+		if (i == 4) {
+			n = Q[i];
+			D("new n = %d, old n = %d\n", n, realN);
+		} else {
+			D("%d %d %s\n", P[i].r, Q[i], P[i].start ? "s" : "e");
+			if (P[i].start)
+				if (++startId == 1)
+					s1r = P[i].r, s1c = Q[i];
+				else
+					s2r = P[i].r, s2c = Q[i];
+			else
+				if (++endId == 1)
+					e1r = P[i].r, e1c = Q[i];
+				else
+					e2r = P[i].r, e2c = Q[i];
+		}
+	}
+	simplified = true;
+	solve();
+}
+
 int main() {
 #if BENCH
-    freopen("files/r13_2_sample.txt","r",stdin);
+    freopen("files/r13_2_rand.txt","r",stdin);
 #endif
 	int T;
 
 	scanf("%d", &T);
-#if CASE_LIMIT
-	T = MAXCASES;
-#endif
 	for (int tc = 0; tc < T; tc++) {
 		scanf("%d", &n);
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
@@ -559,7 +747,8 @@ int main() {
 		printf("Case #%d\n", tc+1);
 		if (invalid())
 			printf("-1\n");
-		else solve();
+		else simplifier();
+			//solve();
 	}
 	return 0;
 }

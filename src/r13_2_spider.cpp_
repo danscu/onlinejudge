@@ -22,9 +22,6 @@
 #include <bitset>
 #include <queue>
 
-#define CASE_LIMIT 0
-const int MAXCASES = 30;
-
 #ifdef BENCH
 #define DBG 0 // modify this for enabling/disable debug
 #else
@@ -559,21 +556,37 @@ bool invalid() {
 	return false;
 }
 
-// Simplifier
+/*
+ * Simplifier related
+ */
 bool findAnchor(int r, int c, int &cOrg) {
+	if (c == 0) {
+		cOrg = 0; return true;
+	} else if (c == n - 1) {
+		cOrg = realN - 1;
+		return true;
+	}
 	REP(i,4)
-		if (Q[i] == c && P[i].r == r) {
-			cOrg = P[i].c;
+		if (Q[i] - 1 == c) {
+			cOrg = P[i].c - 1;
 			return true;
 		}
 	return false;
 }
 
 int truePath[maxn][2];
+int trueLen;
+
+void pushPath(int r, int c) {
+	truePath[trueLen][0] = r, truePath[trueLen][1] = c, trueLen++;
+	D("Truepath[%d] = (%d,%d)\n", trueLen, r, c);
+	assert(r >= 0 && c >= 0);
+}
+
 void printOriginal(int dep) {
-	int trueLen = 0;
 	int cOrg;
 	int pr, pc;
+	trueLen = 0;
 
 	// 1. analyze the simplified solution; 
 	// record starting positions of left (LL or LULD or LDLU ) and right units (RR or RURD or RDRU), and when they end, repeated can be thrown away
@@ -583,34 +596,97 @@ void printOriginal(int dep) {
 	// 4. copy the rest of the lines until the next anchor point
 	// If not done, repeat from  3
 
+	int startC;
+	enum Dir {NONE, L, R, U, D};
+	int lastI, cycleStart;
 	REP(i, dep + 1) {
-		bool anchor = findAnchor(path[i][0] + 1, path[i][1] + 1, cOrg);
+		D("Analyzing (%d,%d)\n", path[i][0], path[i][1]);
+		bool anchor = findAnchor(path[i][0], path[i][1], cOrg);
+		if (i == 0) {
+			lastI = i;
+			startC = cOrg;
+			pr = path[i][0], pc = cOrg;
+			pushPath(pr,pc);
+			continue;
+		}
 		if (anchor) {
-			// extend past 4 until hitting next anchor
-			if (i == 0) {
-				pr = path[i][0] + 1, pc = cOrg;
-			} else {
-				// TODO: search for period cycle and extrapolate it
-				// extrapolate path to reach anchor
-				while (pr != path[i][0] + 1 || pc != cOrg) {
-					pr += (path[i - 1][0] - path[i - 3][0]);
-					pc += (path[i - 1][1] - path[i - 3][1]);
-
-					truePath[trueLen][0] = pr, truePath[trueLen][1] = pc, trueLen++;
-
-					pr += (path[i][0] - path[i - 2][0]);
-					pc += (path[i][1] - path[i - 2][1]);
+			D("Anchor\n");
+			// Find L or R for the current anchor
+			Dir need = cOrg > startC ? R : L;
+			Dir hor = NONE, ver = NONE;
+			int cver, clen;
+			cycleStart = -1; // no cycle (yet)
+			for (j = lastI + 1; j <= i; j++) {
+				Dir cur;
+				if (path[j][0] - path[j-1][0] == 1)
+					cur = D;
+				else if (path[j][0] - path[j-1][0] == -1)
+					cur = U;
+				else if (path[j][1] - path[j-1][1] == -1)
+					cur = L;
+				else if (path[j][1] - path[j-1][1] == 1)
+					cur = R;
+				else cur = NONE; // could be wrapping
+				D("direction at (%d,%d) is %d\n", path[j][0], path[j][1], cur);
+				if (cur == L || cur == R) {
+					if (hor == cur && cur == need)
+						if (ver == NONE) {
+							// found 2-cycle
+							clen = 2; cycleStart = j - clen + 1;
+							break;
+						}
+					if (hor != cur)
+						ver = NONE, cver = 0;
+					hor = cur;
+				} else {
+					if ((ver == D || ver == U) && ver != cur) {
+						// 4-cycle
+						clen = 4; cycleStart = j - clen + 1;
+						break;
+					} else
+						cver = 0;
+					ver = cur;
 				}
-			}
-		} else
-			pr += path[i][0] - path[i-1][0], pc += path[i][1] - path[i-1][1];
+			} // j
 
-		truePath[trueLen][0] = pr, truePath[trueLen][1] = pc, trueLen++;
+			// Copy the line and extend cycle
+			int extendLen = cOrg - startC - (path[i][1] - path[lastI][1]);
+			if (abs(cOrg - startC) == realN - 1 && abs(path[i][1] - path[lastI][1]) == n - 1)
+				extendLen = 0;
+			assert(extendLen % 2 == 0 && "Must be even");
+			assert(!extendLen || cycleStart != -1); // if extension is needed, cycle must be found
+			int k = lastI + 1;
+			while (k <= i) {
+				if (k == cycleStart) {
+					// start extending
+					REP(rr, 1 + abs(extendLen) / 2) {
+						REP(cc, clen) {
+							pr += path[k+cc][0] - path[k+cc-1][0], pc += path[k+cc][1] - path[k+cc-1][1];
+							pushPath(pr,pc);
+						}
+					}
+					k += clen; continue;
+				} else {
+					int deltac = path[k][1] - path[k-1][1];
+					pr += path[k][0] - path[k-1][0];
+					if (path[k-1][0] == 0 && deltac == n - 1) {
+						assert(pc == 0);
+						pc = realN - 1;
+					} if (path[k-1][0] == n - 1 && deltac == -(n - 1)) {
+						assert(pc == realN - 1);
+						pc = 0;
+					} else pc += deltac;
+					pushPath(pr,pc);
+				}
+				k++;
+			}
+			lastI = i, startC = cOrg;
+		} // if anchor
 	}
 
 	printf("%d\n", trueLen);
 	REP(i, trueLen)
-		printf("%d %d\n", truePath[i][0], truePath[i][1]);
+		printf("%d %d\n", truePath[i][0]+1, truePath[i][1]+1);
 }
 
 void simplifier() {
@@ -664,9 +740,6 @@ int main() {
 	int T;
 
 	scanf("%d", &T);
-#if CASE_LIMIT
-	T = MAXCASES;
-#endif
 	for (int tc = 0; tc < T; tc++) {
 		scanf("%d", &n);
 		scanf("%d%d%d%d", &s1r, &s1c, &s2r, &s2c);
@@ -674,8 +747,8 @@ int main() {
 		printf("Case #%d\n", tc+1);
 		if (invalid())
 			printf("-1\n");
-		else // simplifier();
-			solve();
+		else simplifier();
+			//solve();
 	}
 	return 0;
 }
