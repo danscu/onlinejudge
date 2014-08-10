@@ -38,7 +38,8 @@
 #define every(iter, iterable) \
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
-const int maxn = 100010;
+const int maxn = 1000;
+const int maxrealn = 100010;
 const int m = 2; // two columns
 const int bits = 3; // each connectivity state needs 3 bits
 const int conn_mask = (1 << bits) - 1;
@@ -125,7 +126,8 @@ int pathState[maxn][m]; // state selected at the cell
 struct Pt {
 	int r, c;
 	bool start;
-	Pt(int r = 0, int c = 0, int start = false) : r(r), c(c), start(start) { }
+	int id;
+	Pt(int r = 0, int c = 0, int start = false, int id = 0) : r(r), c(c), start(start), id(id) { }
 	bool operator<(const Pt& rhs) const {
 		return c < rhs.c;
 	}
@@ -187,7 +189,7 @@ int searchUnk() {
 			unk[st - LINE_UNK_1] = true;
 		linestat >>= 3;
 	}
-	REP(i, sizeof(unk)/sizeof(unk[0])) {
+	REP(i, (int)sizeof(unk)/sizeof(unk[0])) {
 		if (!unk[i])
 			return i + LINE_UNK_1;
 	}
@@ -567,14 +569,14 @@ bool findAnchor(int r, int c, int &cOrg) {
 		return true;
 	}
 	REP(i,4)
-		if (Q[i] - 1 == c) {
-			cOrg = P[i].c - 1;
+		if (Q[i] - 1 - c == 0 || abs(Q[i] - 1 - c) == 2) {
+			cOrg = P[i].c - (Q[i] - c);
 			return true;
 		}
 	return false;
 }
 
-int truePath[maxn][2];
+int truePath[maxrealn*2][2];
 int trueLen;
 
 void pushPath(int r, int c) {
@@ -588,13 +590,14 @@ void printOriginal(int dep) {
 	int pr, pc;
 	trueLen = 0;
 
-	// 1. analyze the simplified solution; 
-	// record starting positions of left (LL or LULD or LDLU ) and right units (RR or RURD or RDRU), and when they end, repeated can be thrown away
-        // 2. Find next alignment col (some columne with S or E cells)
-	// 3. copy the lines until the starting of the recurring part
-	// 3. extend the simplified solution to near the next anchor column
+	// 1. analyze the simplified solution:
+	//    record starting positions of left (LL or LULD or LDLU ) and
+	//    right recurring cycles (RR or RURD or RDRU)
+    // 2. Find next alignment column (some column with S or E cells or left/right boundaries)
+	// 3. copy the lines until the starting of the recurring cycle
+	// 3. extend the recurring cycle to account for the difference of actual and simplified problems
 	// 4. copy the rest of the lines until the next anchor point
-	// If not done, repeat from  3
+	// 5. If not done, repeat from  3
 
 	int startC;
 	enum Dir {NONE, L, R, U, D};
@@ -614,7 +617,7 @@ void printOriginal(int dep) {
 			// Find L or R for the current anchor
 			Dir need = cOrg > startC ? R : L;
 			Dir hor = NONE, ver = NONE;
-			int cver, clen;
+			int clen;
 			cycleStart = -1; // no cycle (yet)
 			for (j = lastI + 1; j <= i; j++) {
 				Dir cur;
@@ -630,21 +633,20 @@ void printOriginal(int dep) {
 				D("direction at (%d,%d) is %d\n", path[j][0], path[j][1], cur);
 				if (cur == L || cur == R) {
 					if (hor == cur && cur == need)
-						if (ver == NONE) {
-							// found 2-cycle
-							clen = 2; cycleStart = j - clen + 1;
-							break;
+					    if (ver == NONE) {
+					        // 2-cycle
+					        clen = 2; cycleStart = j - clen + 1;
+					        break;
 						}
 					if (hor != cur)
-						ver = NONE, cver = 0;
+						ver = NONE;
 					hor = cur;
-				} else {
-					if ((ver == D || ver == U) && ver != cur) {
-						// 4-cycle
-						clen = 4; cycleStart = j - clen + 1;
-						break;
-					} else
-						cver = 0;
+				} if (cur == D || cur == U) {
+				    if ((ver == D || ver == U) && ver != cur) {
+				        // 4-cycle
+				        clen = 4; cycleStart = j - clen + 1;
+				        break;
+				    }
 					ver = cur;
 				}
 			} // j
@@ -659,25 +661,23 @@ void printOriginal(int dep) {
 			while (k <= i) {
 				if (k == cycleStart) {
 					// start extending
-					REP(rr, 1 + abs(extendLen) / 2) {
+					REP(rr, abs(extendLen) / 2) {
 						REP(cc, clen) {
 							pr += path[k+cc][0] - path[k+cc-1][0], pc += path[k+cc][1] - path[k+cc-1][1];
 							pushPath(pr,pc);
 						}
 					}
-					k += clen; continue;
-				} else {
-					int deltac = path[k][1] - path[k-1][1];
-					pr += path[k][0] - path[k-1][0];
-					if (path[k-1][0] == 0 && deltac == n - 1) {
-						assert(pc == 0);
-						pc = realN - 1;
-					} if (path[k-1][0] == n - 1 && deltac == -(n - 1)) {
-						assert(pc == realN - 1);
-						pc = 0;
-					} else pc += deltac;
-					pushPath(pr,pc);
 				}
+				int deltac = path[k][1] - path[k-1][1];
+				pr += path[k][0] - path[k-1][0];
+				if (path[k-1][1] == 0 && deltac == n - 1) {
+				    assert(pc == 0);
+				    pc = realN - 1;
+				} else if (path[k-1][1] == n - 1 && deltac == -(n - 1)) {
+				    assert(pc == realN - 1);
+				    pc = 0;
+				} else pc += deltac;
+				pushPath(pr,pc);
 				k++;
 			}
 			lastI = i, startC = cOrg;
@@ -691,22 +691,23 @@ void printOriginal(int dep) {
 
 void simplifier() {
 	realN = n;
-	P[0] = Pt(s1r, s1c, true);
-	P[1] = Pt(s2r, s2c, true);
-	P[2] = Pt(e1r, e1c, false);
-	P[3] = Pt(e2r, e2c, false);
+	P[0] = Pt(s1r, s1c, true, 1);
+	P[1] = Pt(s2r, s2c, true, 2);
+	P[2] = Pt(e1r, e1c, false, 1);
+	P[3] = Pt(e2r, e2c, false, 2);
 	std::sort(P, P + 4);
 	P[4] = Pt(0, n, false); // boundary
 
 	int lastC = 0, lastQ = 0;
-	int startId = 0, endId = 0;
+
+	const int maxdiff = 7;
 
 	// Simplify the problem
 	REP(i,5) {
 		Q[i] = lastQ + (P[i].c - lastC);
 
-		if (P[i].c - lastC >= 5) {
-			int reduce = ((P[i].c - lastC) - 5) / 2 * 2;
+		if (P[i].c - lastC >= maxdiff) {
+			int reduce = ((P[i].c - lastC) - maxdiff) / 2 * 2;
 			Q[i] -= reduce;
 		}
 		lastC = P[i].c;
@@ -718,12 +719,12 @@ void simplifier() {
 		} else {
 			D("%d %d %s\n", P[i].r, Q[i], P[i].start ? "s" : "e");
 			if (P[i].start)
-				if (++startId == 1)
+				if (P[i].id == 1)
 					s1r = P[i].r, s1c = Q[i];
 				else
 					s2r = P[i].r, s2c = Q[i];
 			else
-				if (++endId == 1)
+				if (P[i].id == 1)
 					e1r = P[i].r, e1c = Q[i];
 				else
 					e2r = P[i].r, e2c = Q[i];
@@ -748,7 +749,8 @@ int main() {
 		if (invalid())
 			printf("-1\n");
 		else simplifier();
-			//solve();
+		    // need to change maxn for pure solve
+			// solve();
 	}
 	return 0;
 }

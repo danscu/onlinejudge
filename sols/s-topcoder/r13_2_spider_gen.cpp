@@ -418,10 +418,10 @@ int main() {
 #endif
 	int T;
 
-	T = 10;
+	T = 100;
 	printf("%d\n",T);
 	for (int tc = 0; tc < T; tc++) {
-		const int maxn = 30000;
+		const int maxn = 10;
 	    // n = (rand() % ((maxn - 4)/2))*2 + 4;
 		n = maxn;
 		printf("%d\n", n);
