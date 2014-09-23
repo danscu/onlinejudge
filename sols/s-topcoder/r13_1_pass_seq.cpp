@@ -46,11 +46,11 @@ int n, k, m;
 // Trie stuff
 int que[maxn];
 int head, tail;
-int next[maxn][maxk], fail[maxn], cnt[maxn], nodes;
+int nxt[maxn][maxk], fail[maxn], cnt[maxn], nodes;
 #define root 0
 
 void clear(int x) {
-    CLRVN(next[x], -1, k + 1);
+    CLRVN(nxt[x], -1, k + 1);
     fail[x] = -1; cnt[x] = 0;
 }
 
@@ -63,11 +63,11 @@ void insert(const int *sym, int len) {
     int p = root, idx;
     REP(i,len) {
         idx = *sym;
-        if (next[p][idx] == -1) {
+        if (nxt[p][idx] == -1) {
             clear(nodes);
-            next[p][idx] = nodes++;
+            nxt[p][idx] = nodes++;
         }
-        p = next[p][idx];
+        p = nxt[p][idx];
         sym++;
     }
     cnt[p]++;
@@ -80,9 +80,9 @@ void buildGraph() {
     while (head < tail) {
         cur = que[head++];
         for (int i = 0; i < k; i++)
-            if ((inext = next[cur][i]) != -1) {
+            if ((inext = nxt[cur][i]) != -1) {
                 for (fptr1 = fail[cur]; fptr1 != -1; fptr1 = fail[fptr1])
-                    if ((fptr2 = next[fptr1][i]) != -1) {
+                    if ((fptr2 = nxt[fptr1][i]) != -1) {
                         fail[inext] = fptr2;
                         break;
                     }
@@ -91,9 +91,9 @@ void buildGraph() {
                 que[tail++] = inext;
             } else
                 if (!cur)
-                    next[cur][i] = 0;
+                    nxt[cur][i] = 0;
                 else
-                    next[cur][i] = next[fail[cur]][i];
+                    nxt[cur][i] = nxt[fail[cur]][i];
     }
 }
 
@@ -153,7 +153,7 @@ void getPow(Mat &ans, Mat &base, int x){
 
 int main() {
 #if BENCH
-    freopen("files/1_rand.txt","r",stdin);
+    freopen("files/r13_1_rand.txt","r",stdin);
 #endif
 	int T;
 	int sym[maxk];
@@ -174,9 +174,9 @@ int main() {
 		(am = new Mat(nodes))->clear();
 		REP(i,nodes)
 		    REP(j, k) {
-		        int son = next[i][j];
+		        int son = nxt[i][j];
 		        if (!cnt[son] && !cnt[i])
-		            am->a[i][son]++;
+		            am->a[son][i]++;
 		}
 #if DBG
 		printf("----mat----\n");
@@ -200,7 +200,7 @@ int main() {
 
         Num ans = 0;
 		REP(i,nodes) {
-		    ans += ampow->a[0][i];
+		    ans += ampow->a[i][0];
 		    if (ans >= MOD) ans -= MOD;
 		}
 
