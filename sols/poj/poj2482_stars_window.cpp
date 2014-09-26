@@ -29,13 +29,6 @@ const int maxn = 20005;
 const int MAXTREE = 2 * maxn * 3;
 typedef long long Num;
 
-// Segment tree stuff
-#define L(u) u<<1
-#define R(u) u<<1|1
-#define lson u<<1, b, mid
-#define rson u<<1|1, mid+1, e
-#define defmid int mid = (b + e) >> 1
-
 struct Line {
     Num x, y1, y2;
     int val;

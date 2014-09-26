@@ -1,0 +1,267 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 0 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef int Num;
+const Num maxn = 256;
+const int MAXTREE = maxn * 3;
+int n;
+
+/* Segment tree */
+#define L(u) u<<1
+#define R(u) u<<1|1
+#define lson u<<1, b, mid
+#define rson u<<1|1, mid+1, e
+#define defmid int mid = (b + e) >> 1
+const int root = 1;
+
+struct Rule {
+    int a, b;
+    int c, d, e, f;
+} rules[maxn];
+
+struct rule_compare {
+    bool operator()(const Rule *a, const Rule *b) const
+    {
+        if (a->c < b->c)
+            return true;
+        else if (a->c == b->c && a->d < b->d)
+            return true;
+        else if (a->d == b->d && a->e < b->e)
+            return true;
+        else if (a->e == b->e && a->f < b->f)
+            return true;
+        return false;
+    }
+};
+
+int getOverlap(set<Rule*,rule_compare> &rules) {
+    const int range = 51; // FIXME
+    int sum = 0;
+    FOR(i,1,range)
+        FOR(j,1,range) {
+            int cnt = 0;
+            for (every(r, rules)) {
+                if ((*r)->c <= i && i <= (*r)->d &&
+                    (*r)->e <= j && j <= (*r)->f)
+                    cnt++;
+            }
+            sum = max(sum, cnt);
+    }
+    return sum;
+}
+
+int getOverlap3(Rule rules[]) {
+    const int range = 256; // FIXME
+    int sum = 0;
+    FOR(a,1,range)
+    FOR(i,1,range)
+    FOR(j,1,range) {
+            int cnt = 0;
+            REP(ir,n) {
+                Rule *r = &rules[ir];
+                if (r->a <= a && a <= r->b &&
+                    r->c <= i && i <= r->d &&
+                    r->e <= j && j <= r->f)
+                    cnt++;
+            }
+            sum = max(sum, cnt);
+    }
+    return sum;
+}
+
+template<int MAX, typename Num>
+struct SegTree {
+    struct SegNode {
+        Num sum; /* sum = overlapped rules */
+        set<Rule*,rule_compare> rules;
+    };
+    SegNode tree[MAX];
+    Rule *rule;
+
+    void setRule(Rule *rule) {
+        this->rule = rule;
+    }
+
+    void init(int u, int b, int e) {
+        tree[u].sum = 0;
+        tree[u].rules.clear();
+        if (b == e)
+            return;
+        defmid;
+        init(lson);
+        init(rson);
+    }
+
+    void pushdown(int u, int b, int e) {
+        tree[L(u)].rules.insert(tree[u].rules.begin(), tree[u].rules.end());
+        tree[R(u)].rules.insert(tree[u].rules.begin(), tree[u].rules.end());
+    }
+
+    void pushup(int u, int b, int e) {
+        tree[u].sum = max(tree[L(u)].sum, tree[R(u)].sum);
+    }
+
+    void update(int u, int b, int e, Num l, Num r) {
+        D("update u=%d b=%d e=%d l=%d r=%d\n", u, b, e, l, r);
+        if (l == b && e == r) {
+            tree[u].rules.insert(rule);
+            return;
+        }
+
+        if (tree[u].rules.size())
+            pushdown(u, b, e);
+
+        defmid;
+        if (r <= mid)
+            update(lson, l, r);
+        else if (l >= mid+1)
+            update(rson, l, r);
+        else {
+            update(lson, l, mid);
+            update(rson, mid+1, r);
+        }
+    }
+
+    void query(int u, int b, int e, Num l, Num r) {
+        if (b == e) {
+            tree[u].sum = getOverlap(tree[u].rules);
+            return;
+        }
+
+        if (tree[u].rules.size())
+            pushdown(u, b, e);
+
+        defmid;
+        if (r <= mid)
+            query(lson, l, r);
+        else if (l >= mid+1)
+            query(rson, l, r);
+        else {
+            query(lson, l, mid);
+            query(rson, mid+1, r);
+        }
+
+        pushup(u, b, e);
+    }
+};
+
+SegTree<MAXTREE,Num> st;
+
+void putnum(int v) {
+    char buf[64];
+    int i=0;
+    do {
+        buf[i]=v%10;
+        v/=10;
+        i++;
+    } while (v);
+    while(i>0)
+        putchar(buf[--i]+'0');
+}
+
+int getnum() {
+    char cc;
+    int dd;
+    while (cc = getchar(), cc<'0'||cc>'9');
+    dd=cc-'0';
+    while (cc = getchar(), cc>='0'&&cc<='9')
+        dd = dd*10+cc-'0';
+    return dd;
+}
+
+void solve() {
+    int ans = 0;
+    int x1, x2, y1, y2, z1, z2;
+    st.init(root, 1, maxn);
+
+    REP(i,n) {
+        x1 = getnum() + 1;
+        x2 = getnum() + 1;
+        y1 = getnum() + 1;
+        y2 = getnum() + 1;
+        z1 = getnum() + 1;
+        z2 = getnum() + 1;
+        D("Inserting %d-%d %d-%d %d-%d\n", x1, x2, y1, y2, z1, z2);
+        rules[i].a = x1;
+        rules[i].b = x2;
+        rules[i].c = y1;
+        rules[i].d = y2;
+        rules[i].e = z1;
+        rules[i].f = z2;
+        st.setRule(&rules[i]);
+        st.update(root, 1, maxn, x1, x2);
+    }
+    st.query(root, 1, maxn, 1, maxn);
+    ans = st.tree[root].sum;
+    printf("%d\n", ans);
+}
+
+void solve_tired() {
+    int ans = 0;
+    int x1, x2, y1, y2, z1, z2;
+    REP(i,n) {
+        x1 = getnum() + 1;
+        x2 = getnum() + 1;
+        y1 = getnum() + 1;
+        y2 = getnum() + 1;
+        z1 = getnum() + 1;
+        z2 = getnum() + 1;
+        D("Inserting %d-%d %d-%d %d-%d\n", x1, x2, y1, y2, z1, z2);
+        rules[i].a = x1;
+        rules[i].b = x2;
+        rules[i].c = y1;
+        rules[i].d = y2;
+        rules[i].e = z1;
+        rules[i].f = z2;
+    }
+    ans = getOverlap3(rules);
+    printf("%d\n", ans);
+}
+
+int main() {
+#if BENCH
+	freopen("files/r14_2_test.txt","r",stdin);
+#endif
+	int T = getnum();
+	T = 5;
+	for (int tc = 0; tc < T; tc++) {
+	    n = getnum();
+		printf("Case #%d\n", tc + 1);
+		// solve();
+		solve_tired();
+	}
+	return 0;
+}

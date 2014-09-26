@@ -1,0 +1,170 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 1 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef int Num;
+const Num maxn = 256;
+const int MAXTREE = maxn * 3;
+
+// Num a[maxn],b[maxn],c[maxn],d[maxn],e[maxn],f[maxn];
+
+// Segment tree stuff
+#define xlson kx<<1, xl, mid
+#define xrson kx<<1|1, mid+1, xr
+#define ylson ky<<1, yl, mid
+#define yrson ky<<1|1, mid+1, yr
+#define zlson kz<<1, zl, mid
+#define zrson kz<<1|1, mid+1, zr
+
+#define defmidx int mid = (xl + xr) >> 1
+#define defmidy int mid = (yl + yr) >> 1
+#define defmidz int mid = (zl + zr) >> 1
+
+const int root=1;
+int tree[MAXTREE][MAXTREE][MAXTREE];
+
+int n;
+int num;
+int x1, y1_, x2, y2, z1, z2; /* y1 is already defined somewhere */
+
+void editZ(int kx, int ky, int kz, int zl, int zr, int val) {
+    if (z1 <= zl && zr <= z2) {
+        D("kx=%d ky=%d kz=%d val=%d +%d = %d\n", kx, ky, kz, tree[kz][ky][kz], val,
+                tree[kz][ky][kz]+val);
+        tree[kx][ky][kz] += val;
+        return;
+    }
+    defmidz;
+    if (z1 <= mid) editZ(kx, ky, zlson, val);
+    if (z2 > mid) editZ(kx, ky, zrson, val);
+}
+
+void editY(int kx, int ky, int yl, int yr, int val) {
+    if (y1_ <= yl && yr <= y2) {
+        editZ(kx, ky, 1, 1, maxn, val);
+        return;
+    }
+    defmidy;
+    if (y1_ <= mid) editY(kx, ylson, val);
+    if (y2 > mid) editY(kx, yrson, val);
+}
+
+void editX(int kx, int xl, int xr, int val) {
+    if (x1 <= xl && xr <= x2) {
+        editY(kx, 1, 1, maxn, val);
+        return;
+    }
+    defmidx;
+    if (x1 <= mid) editX(xlson, val);
+    if (x2 > mid) editX(xrson, val);
+}
+
+void queryZ(int kx, int ky, int kz, int zl, int zr) {
+    num = max(num, tree[kx][ky][kz]);
+    if (zl==zr) return;
+    defmidz;
+    if (z1 <= mid) queryZ(kx,ky,zlson);
+    else queryZ(kx,ky,zrson);
+}
+
+void queryY(int kx, int ky, int yl, int yr) {
+    queryZ(kx, ky, 1, 1, maxn);
+    if (yl==yr) return;
+    defmidy;
+    if (y1_ <= mid) queryY(kx,ylson);
+    else queryY(kx,yrson);
+}
+
+void queryX(int kx, int xl, int xr) {
+    queryY(kx, 1, 1, maxn);
+    if (xl == xr) return;
+    defmidx;
+    if (x1 <= mid) queryX(xlson);
+    else queryX(xrson);
+}
+
+void putnum(int v) {
+    char buf[64];
+    int i=0;
+    do {
+        buf[i]=v%10;
+        v/=10;
+        i++;
+    } while (v);
+    while(i>0)
+        putchar(buf[--i]+'0');
+}
+
+int getnum() {
+    char cc;
+    int dd;
+    while (cc = getchar(), cc<'0'||cc>'9');
+    dd=cc-'0';
+    while (cc = getchar(), cc>='0'&&cc<='9')
+        dd = dd*10+cc-'0';
+    return dd;
+}
+
+void solve() {
+    int ans = 0;
+    CLR(tree);
+    REP(i,n) {
+        x1 = getnum() + 1;
+        x2 = getnum() + 1;
+        y1_ = getnum() + 1;
+        y2 = getnum() + 1;
+        z1 = getnum() + 1;
+        z2 = getnum() + 1;
+        D("Inserting %d-%d %d-%d %d-%d\n", x1, x2, y1_, y2, z1, z2);
+        editX(1,1,maxn,1);
+        num = 0;
+        queryX(1,1,maxn);
+        ans = max(ans, num);
+    }
+    printf("%d\n", ans);
+}
+
+int main() {
+#if BENCH
+	freopen("files/r14_2_test.txt","r",stdin);
+#endif
+	int T = getnum();
+	for (int tc = 0; tc < T; tc++) {
+	    n = getnum();
+		printf("Case #%d\n", tc + 1);
+		solve();
+	}
+	return 0;
+}

@@ -1,0 +1,79 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 0 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stderr, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef int Num;
+#if DBG
+const Num maxm = 10;
+const Num maxr = 10;
+#else
+const Num maxm = 10005;
+const Num maxr = 10005;
+#endif
+const Num INF = numeric_limits<Num>::max();
+
+int m,r,n; // m: number of cols, r: number of rows, n = m*r
+
+Num data[maxm*maxr];
+
+int main() {
+#if BENCH
+	freopen("files/r14_4_gen.txt","w",stdout);
+#endif
+	int T = 20;
+	printf("%d\n", T);
+	for (int tc = 0; tc < T; tc++) {
+	    m = 1 + (rand() % (maxm-1));
+	    r = 10;
+		printf("%d %d\n", m, r); n = m * r;
+		REP(ii,n)
+		    data[ii] = ii < n - r ? ii + 1 : 0;
+		// scramble
+		REP(i,n-1) {
+		    int tt = rand() % (n - i);
+		    swap(data[i], data[tt + i]);
+		}
+		REP(i,r) {
+		    REP(j,m) {
+		        int ii = i * m + j;
+			    printf("%d ", data[ii]);
+			    ii++;
+		    }
+		    printf("\n");
+		}
+	}
+	fflush(stdout);
+	return 0;
+}

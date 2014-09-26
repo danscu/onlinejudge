@@ -1,0 +1,174 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 1 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef int Num;
+const Num maxn = 256;
+const int MAXTREE = maxn * 3;
+int n;
+
+/* Segment tree */
+#define L(u) u<<1
+#define R(u) u<<1|1
+#define xlson xu<<1, xb, mid
+#define xrson xu<<1|1, mid+1, xe
+#define ylson yu<<1, yb, mid
+#define yrson yu<<1|1, mid+1, ye
+#define defmidx int mid = (xb + xe) >> 1
+#define defmidy int mid = (yb + ye) >> 1
+const int root = 1;
+
+template<int MAX, typename Num>
+struct SegTree2D {
+    struct SegNode {
+        Num sum; /* sum = max brightness in all rectangles */
+        int add; /* used for delayed update */
+    };
+    SegNode tree[MAX][MAX];
+
+    void initY(int xu, int yu, int yb, int ye) {
+        tree[xu][yu].sum = tree[xu][yu].add = 0;
+        if (yb == ye)
+            return;
+        defmidy;
+        initY(xu, ylson);
+        initY(xu, yrson);
+    }
+
+    void initX(int xu, int xb, int xe) {
+        if (xb == xe) {
+            initY(xu, root, 1, maxn);
+            return;
+        }
+        defmidx;
+        initX(xlson);
+        initX(xrson);
+    }
+
+    void pushdownX(int xu, int xb, int xe) {
+        tree[L(xu)].sum += tree[u].add;
+        tree[L(xu)].add += tree[u].add;
+        tree[R(xu)].sum += tree[u].add;
+        tree[R(xu)].add += tree[u].add;
+        tree[xu].add = 0;
+    }
+
+    void pushup(int u, int b, int e) {
+        tree[u].sum = max(tree[L(u)].sum, tree[R(u)].sum);
+    }
+
+    void update(int u, int b, int e, Num l, Num r, int val) {
+        if (l == b && e == r) {
+            tree[u].sum += val;
+            tree[u].add += val;
+            return;
+        }
+
+        if (b == e)
+            return;
+
+        if (tree[u].add)
+            pushdown(u, b, e);
+
+        defmid;
+        if (r <= mid)
+            update(xlson, l, r, val);
+        else if (l >= mid+1)
+            update(xrson, l, r, val);
+        else {
+            update(xlson, l, mid, val);
+            update(xrson, mid+1, r, val);
+        }
+
+        pushup(u, b, e);
+    }
+};
+
+SegTree2D<MAXTREE,Num> st;
+
+void putnum(int v) {
+    char buf[64];
+    int i=0;
+    do {
+        buf[i]=v%10;
+        v/=10;
+        i++;
+    } while (v);
+    while(i>0)
+        putchar(buf[--i]+'0');
+}
+
+int getnum() {
+    char cc;
+    int dd;
+    while (cc = getchar(), cc<'0'||cc>'9');
+    dd=cc-'0';
+    while (cc = getchar(), cc>='0'&&cc<='9')
+        dd = dd*10+cc-'0';
+    return dd;
+}
+
+void solve() {
+    int ans = 0;
+    int x1, x2, y1, y2, z1, z2;
+    st.init(root, 1, maxn);
+
+    REP(i,n) {
+        x1 = getnum() + 1;
+        x2 = getnum() + 1;
+        y1 = getnum() + 1;
+        y2 = getnum() + 1;
+        z1 = getnum() + 1;
+        z2 = getnum() + 1;
+        D("Inserting %d-%d %d-%d %d-%d\n", x1, x2, y1, y2, z1, z2);
+
+        st.update(root, 1, maxn, x1, x2, 1);
+        ans = max(ans, st.tree[root].sum);
+    }
+    printf("%d\n", ans);
+}
+
+int main() {
+#if BENCH
+	freopen("files/r14_2_test.txt","r",stdin);
+#endif
+	int T = getnum();
+	for (int tc = 0; tc < T; tc++) {
+	    n = getnum();
+		printf("Case #%d\n", tc + 1);
+		solve();
+	}
+	return 0;
+}

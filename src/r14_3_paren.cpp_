@@ -1,0 +1,143 @@
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 0 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+    typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef unsigned long long Num;
+const Num maxn = 100006;
+const Num MOD = 1000000007;
+
+char str[maxn];
+int n;
+Num catalan[maxn];
+int cn;
+
+void initCatalan() {
+    cn = 2;
+    catalan[0] = catalan[1] = 1;
+}
+
+Num getCatalan(int n)
+{
+    // Fill entries in catalan[] using recursive formula
+    for (int i = cn; i<=n; i++)
+    {
+        catalan[i] = 0;
+        for (int j=0; j<i; j++)
+            catalan[i] = (catalan[i] + catalan[j] * catalan[i-j-1] % MOD) % MOD;
+    }
+
+    cn = max(cn, n);
+
+    // Return last entry
+    return catalan[n];
+}
+
+// zero-based
+Num index_slow(const char *s, int b, int e, int n) {
+    int open = 0, sofar = 0;
+    Num idx = 0;
+    if (e - b <= 2)
+        return 0;
+    for (int i = b; i < e; i++) {
+        if (s[i] == '(') {
+            open++; sofar++;
+        } else
+            open--;
+        if (!open) {
+            // segmented
+            for (int k = 1; k < sofar; k++) {
+                int k1 = n - k, k2 = k - 1;
+                Num C1 = getCatalan(k1), C2 = getCatalan(k2);
+                D("C%d * C%d = %d * %d = %d\n", k1, k2, C1, C2, C1 * C2);
+                idx = (idx + C1 * C2 % MOD) % MOD;
+            }
+            Num subidx = index_slow(s, b + 1, i, sofar - 1);
+            Num C1 = getCatalan(n - sofar);
+            idx = (idx + subidx * C1 % MOD) % MOD;
+            idx = (idx + index_slow(s, i + 1, e, n - sofar)) % MOD;
+            return idx;
+        }
+    }
+    assert(false);
+}
+
+void solve() {
+    int open = 0;
+    int swaps = 0;
+    REP(i,n) {
+        if (str[i] == '(') {
+            open++;
+        } else {
+            // )
+            if (open == 0) {
+                // invalid, search
+                int j = i + 1;
+                while (j < n && str[j] != '(') j++;
+                if (j < n) {
+                    swap(str[i], str[j]); swaps++;
+                    open++;
+                } else {
+                    printf("-1\n");
+                    return;
+                }
+            } else
+                open--;
+        }
+    }
+    if (open) {
+        printf("-1\n");
+        return;
+    }
+    printf("%d %lld\n", swaps, (1 + index_slow(str, 0, n, n / 2)) % MOD) ;
+}
+
+int main() {
+#if BENCH
+    freopen("files/r14_3_test.txt","r",stdin);
+#endif
+    int nlim = 30000;
+    int T;
+    initCatalan();
+    scanf("%d", &T);
+    for (int tc = 0; tc < T; tc++) {
+        scanf("%s", str); n = strlen(str);
+        printf("Case #%d\n", tc + 1);
+        if (nlim && n > nlim)
+            printf("-1\n");
+        else
+            solve();
+    }
+    return 0;
+}
