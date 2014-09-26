@@ -84,7 +84,7 @@ void solve() {
 	}
 
 	// the remaining is intersect, find the one with fewest 1's
-	int minOneCnt = L + 1;
+	int minOneCnt = INF;
 	for (every(iis,is)) {
 		int oneCnt = 0;
 		for (every(ic,*iis))
@@ -93,7 +93,7 @@ void solve() {
 		minOneCnt = min(minOneCnt, oneCnt);
 	}
 
-	if (minOneCnt > L)
+	if (minOneCnt == INF)
 		cout << "NOT POSSIBLE";
 	else
 		cout << minOneCnt;
@@ -103,7 +103,7 @@ void solve() {
 int main() {
 #if BENCH
 	freopen("files/gcj141aa_charging_chaos_large.in","r",stdin);
-	freopen("files/gcj141aa_charging_chaos_large.out","w",stdout);
+	//freopen("files/gcj141aa_charging_chaos_large.out","w",stdout);
 #endif
 	int T;
 	scanf("%d", &T);
