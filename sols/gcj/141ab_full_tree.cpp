@@ -41,9 +41,6 @@ const Num INF = numeric_limits<Num>::max();
 int N;
 vector<int> g[maxn];
 
-list<string> pats[maxn];
-typedef list<string>::iterator slIterator;
-
 // return cut nodes
 int dfs(int u, int par) {
 	D("u=%d\n", u);
@@ -59,18 +56,17 @@ int dfs(int u, int par) {
 }
 
 int solve() {
-	int mincut = INF;
-	int ans = 1;
+	int maxtree = 1;
 	FOR(root,1,N) {
-		ans = max(ans, dfs(root, -1));
+		maxtree = max(maxtree, dfs(root, -1));
 	}
-	return N - ans;
+	return N - maxtree;
 }
 
 int main() {
 #if BENCH
 	freopen("files/gcj141ab_full_tree_large.in","r",stdin);
-	freopen("files/gcj141ab_full_tree_large.out","w",stdout);
+//	freopen("files/gcj141ab_full_tree_large.out","w",stdout);
 #endif
 	int T;
 	scanf("%d", &T);
