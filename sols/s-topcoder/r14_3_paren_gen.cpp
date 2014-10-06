@@ -32,7 +32,7 @@ public:
 
 int main() {
 	Solution sn;
-	vector<string> res = sn.generateParenthesis(4);
+	vector<string> res = sn.generateParenthesis(6);
 
 	for (int i = 0; i < res.size(); i++)
 		cout << res[i] << endl;

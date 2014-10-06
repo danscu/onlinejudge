@@ -38,59 +38,60 @@ typedef unsigned long long Num;
 const Num maxn = 100006;
 const Num MOD = 1000000007;
 
+/*
+ * Total symbols 2N, currently K open, M close, how many continuations?
+ * D(K,M,N) = Binom(2N - M - K, N - M) - Binom(2N - M - K, N - M + 1)
+ *
+ * Let A = 2N - M - K, B = N - M
+ * The number can be simplified to be
+ *   Binom(A, B) (2B - A + 1) / (B + 1)
+ *
+ * So D(K,M,N) = Binom(2N - M - K, N - M) (K - M + 1) / (N - M + 1)
+ *
+ * Algorithm:
+ * 1. For each character in the string
+ * 2.     if the character is (, K++
+ * 3.        tmp = string before ( and add a )
+ * 4.        idx += D(k,m,n) for tmp
+ * 5.     if the character is ), M++
+ * 6. idx is the result
+ */
+
 char str[maxn];
 int n;
-Num catalan[maxn];
-int cn;
 
-void initCatalan() {
-    cn = 2;
-    catalan[0] = catalan[1] = 1;
+Num getBinom(int n, int k) {
+	Num t = 1;
+	if (k < n - k)
+		for (int i = n; i >= n - k + 1; i--)
+			t = t * i / (n - i + 1) % MOD;
+	else
+		for (int i = n; i >= k + 1; i--)
+			t = t * i / (n - i + 1) % MOD;
+	return t;
 }
 
-Num getCatalan(int n)
-{
-    // Fill entries in catalan[] using recursive formula
-    for (int i = cn; i<=n; i++)
-    {
-        catalan[i] = 0;
-        for (int j=0; j<i; j++)
-            catalan[i] = (catalan[i] + catalan[j] * catalan[i-j-1] % MOD) % MOD;
-    }
-
-    cn = max(cn, n);
-
-    // Return last entry
-    return catalan[n];
+Num getD(int K, int M, int N) {
+	Num d = getBinom(2*N - M - K, N - M) * (K - M + 1) / (N - M + 1) % MOD;
+	D("getD K=%d M=%d N=%d D(k,m,n)=%lld\n", K,M,N,d);
+	return d;
 }
 
-// zero-based
-Num index_slow(const char *s, int b, int e, int n) {
-    int open = 0, sofar = 0;
-    Num idx = 0;
-    if (e - b <= 2)
-        return 0;
-    for (int i = b; i < e; i++) {
-        if (s[i] == '(') {
-            open++; sofar++;
-        } else
-            open--;
-        if (!open) {
-            // segmented
-            for (int k = 1; k < sofar; k++) {
-                int k1 = n - k, k2 = k - 1;
-                Num C1 = getCatalan(k1), C2 = getCatalan(k2);
-                D("C%d * C%d = %d * %d = %d\n", k1, k2, C1, C2, C1 * C2);
-                idx = (idx + C1 * C2 % MOD) % MOD;
-            }
-            Num subidx = index_slow(s, b + 1, i, sofar - 1);
-            Num C1 = getCatalan(n - sofar);
-            idx = (idx + subidx * C1 % MOD) % MOD;
-            idx = (idx + index_slow(s, i + 1, e, n - sofar)) % MOD;
-            return idx;
-        }
-    }
-    assert(false);
+Num index_correct(const char *s, int L) {
+	Num idx = 0;
+	int open = 0;
+	int close = 0;
+	for (int i = 0; i < L; i++) {
+		if (s[i] == '(') {
+			if (open)
+				idx = (idx + getD(open, close + 1, L / 2)) % MOD;
+			open++;
+		} else {
+			// ')'
+			close++;
+		}
+	}
+	return idx;
 }
 
 void solve() {
@@ -120,16 +121,17 @@ void solve() {
         printf("-1\n");
         return;
     }
-    printf("%d %lld\n", swaps, (1 + index_slow(str, 0, n, n / 2)) % MOD) ;
+    //Num idx = index_slow(str, 0, n, n / 2);
+    Num idx = index_correct(str, n);
+    printf("%d %lld\n", swaps, (1 + idx) % MOD) ;
 }
 
 int main() {
 #if BENCH
-    freopen("files/r14_3_test.txt","r",stdin);
+    freopen("files/r14_3_gen.txt","r",stdin);
 #endif
     int nlim = 30000;
     int T;
-    initCatalan();
     scanf("%d", &T);
     for (int tc = 0; tc < T; tc++) {
         scanf("%s", str); n = strlen(str);
