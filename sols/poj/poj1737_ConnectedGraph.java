@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.Scanner;
 
-public class poj1737_ConnectedGraph {
+public class Main {
 	Scanner scan;
 
 	BigInteger C[][] = new BigInteger[55][55];
@@ -15,7 +15,7 @@ public class poj1737_ConnectedGraph {
 
 	int n;
 
-	public poj1737_ConnectedGraph(Scanner sc) {
+	public Main(Scanner sc) {
 		scan = sc;
 	}
 
@@ -59,12 +59,12 @@ public class poj1737_ConnectedGraph {
 
 	public static void main(String args[]) throws FileNotFoundException {
 		InputStream is = System.in;
-		File file = new File(System.getProperty("user.dir")+"/" + 
-				"poj1737_ConnectedGraph.txt");
+		/*File file = new File(System.getProperty("user.dir")+"/" + 
+				"poj1737_ConnectedGraph.txt"); */
 
-		Scanner scan = new Scanner(file);
+		Scanner scan = new Scanner(is);
 		
-		poj1737_ConnectedGraph poj = new poj1737_ConnectedGraph(scan);
+		Main poj = new Main(scan);
 		poj.run();
 	}
 }
