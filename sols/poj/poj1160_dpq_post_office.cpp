@@ -1,3 +1,6 @@
+/* POJ 1160 Post Office
+ * DP + k-optimization
+ */
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -48,6 +51,8 @@ int K[maxn][maxn];
  * dp[i][j] = min_k { dp[k][j-1] + sum[k+1][i] }
  *
  * sum[i][j] = sum[i][j-1] + p[j] - p[(i+j)/2] -- draw a diagram and derive
+ *
+ * K[i][j-1] <= k <= K[i+1][j] : where K[i][j] = argmin_k { dp[k][j-1] + sum[k+1][i] }
  */
 
 Num solve() {
