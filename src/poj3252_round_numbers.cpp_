@@ -1,0 +1,112 @@
+/*
+ * POJ 3252 Round Numbers
+ * For numbers in a range [a,b], find how many whose 0s >= 1s in binary form.
+ */
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#ifdef BENCH
+#define DBG 1 // modify this for enabling/disable debug
+#else
+#define DBG 0
+#endif // BENCH
+
+#define D(...) do { if (DBG) fprintf(stderr, __VA_ARGS__); } while (0)
+
+#define CLR(x) memset(x, 0, sizeof x);
+#define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
+#define CLRVN(x, v, n) memset(x, v, (n)*sizeof x[0]);
+#define REP(v,n) for(int v=0;v<n;v++)
+#define FOR(v,a,b) for(int v=a;v<=b;v++)
+#define every(iter, iterable) \
+	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
+
+typedef unsigned long long Num;
+
+const int maxn = 128;
+
+Num from, to;
+Num table[maxn + 1];		// round number with n bin digits (including 0)
+
+void getNum(int width, int priorZ) {
+	// Find round numbers with k digits, k <= n
+
+}
+
+Num countPrior(char bin[], int start, int digits, int zeroNum) {
+	// make sure zeroNum + new zeros - new ones >= 0
+	// TODO - binary numbers with (digits - start - 1) digits
+	int width = digits - start - 1;
+	int res = getNum(width, zeroNum);
+
+	// first one
+	if (start == digits - 1)
+		res--;
+
+	return res;
+}
+
+Num findRoundNumbers(Num n) {
+	// Find number of bin digits
+	int digits = 0;
+	int priors = 0;
+	Num tmp = n;
+	while (tmp) {
+		digits++;
+		tmp >>= 1;
+	}
+
+	// Convert to bin
+	char bin[maxn];
+	tmp = n;
+	int i = 0;
+	while (tmp) {
+		bin[i++] = tmp & 1;
+		tmp >>= 1;
+	}
+
+	// Split the number
+	int zeroNum = 0;
+	for (int j = i - 1; j >= 0; j--) {
+		if (bin[j] == 1) {
+			zeroNum--;
+			priors += countPrior(bin, j, digits, zeroNum);
+		} else {
+			zeroNum++;
+		}
+	}
+
+	return priors;
+}
+
+Num solve() {
+	return findRoundNumbers(to) - findRoundNumbers(from - 1);
+}
+
+int main() {
+#if BENCH
+	freopen("files/poj3252_round_numbers.txt","r",stdin);
+#endif
+	makeTable(maxn);
+	while (~scanf("%llu%llu", &from, &to)) {
+		printf("%llu\n", solve());
+	}
+	return 0;
+}
