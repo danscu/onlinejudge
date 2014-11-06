@@ -51,57 +51,59 @@ using namespace std;
 
 #define INF 100000000
 
+// For pairs
+typedef map<int,int> DistSet;	// number of nodes at dist
+
 struct Edge {
     int y, next;
+    int val;
 };
 
 template<int maxn>
 struct Tree {
-    Edge map[maxn+1];	// edge store
+    Edge edges[maxn+1];	// edge store
     int child[maxn+1];	// first child for node
     bool visited[maxn+1];
     int map_sz;
     int n;
 
-    // private
+    // For centroid
 	int minBal;
 	int nodeMinBal;
 
-    void insert(int x, int y) {
+    void insert(int x, int y, int val) {
     	D("insert (%d,%d)\n",x, y);
-        map_sz++; // allocate edge memory
-        map[map_sz].y = y;
-        map[map_sz].next = child[x];
-        child[x] = map_sz; // add to linked list
+        map_sz++;							// allocate edge memory
+        edges[map_sz].y = y;
+        edges[map_sz].val = val;			// dist between x and y
+        edges[map_sz].next = child[x];
+        child[x] = map_sz; 					// add to linked list
     }
 
     // n = max number of nodes
     void init(int n) {
         map_sz = 0;
-        minBal = INF;
         this->n = n;
         CLRN(child, n + 1);
     }
 
-    int dfs(int x) {
+    void prep_dfs() {
         CLRN(visited, n + 1);
-        return __dfs(x);
     }
 
-private:
     // DFS
     // Returns tree size
-    int __dfs(int x) {
+    int dfs_centroid(int x) {
     	visited[x] = true;
 
     	int maxSubtree = 0;
     	int sz = 1; // self
 
-        for (int idx = child[x]; idx; idx = map[idx].next) {
-        	int y = map[idx].y;
+        for (int idx = child[x]; idx; idx = edges[idx].next) {
+        	int y = edges[idx].y;
         	if (visited[y]) continue;
 
-        	int childSz = __dfs(y);
+        	int childSz = dfs_centroid(y);
         	sz += childSz;
 
         	maxSubtree = max(maxSubtree, childSz);
@@ -121,37 +123,62 @@ private:
 
         return sz;
     }
-};
+
+public:
+    void dfs_dist(int x, int distToRoot, DistSet &dset) {
+    	for (int idx = child[x]; idx; idx = edges[idx].next) {
+    		int y = edges[idx].y;
+    		if (visited[y]) continue;
+
+    		int dist = edges[idx].val + distToRoot;
+    		dset[dist]++;
+    		dfs_dist(y, dist, dset);
+    	}
+    }
+ };
 
 typedef int Num;
 const Num maxn = 20005 * 2;
 
-int n;
+int n, k;
 Tree<maxn> tree;
 
-void solve() {
-	tree.dfs(1);
-	printf("%d %d\n", tree.nodeMinBal, tree.minBal);
+int solve(int root) {
+	// find centroid
+    tree.minBal = INF;
+	tree.prep_dfs();
+	tree.dfs_centroid(root);
+	int centroid = tree.nodeMinBal;
+
+	// find dist to centroid
+	DistSet dset;
+	tree.prep_dfs();
+	tree.dfs_dist(centroid, 0, dset);
+
+	int pairs = 0;
+	// TODO find pairs within dist based on dset
+
+	int inSubPairs = 0;
+	// TODO Recursion -- split tree at centroid
+	// Recursively find pairs within each subtree
+
+	return pairs - inSubPairs;
 }
 
-// TODO
 int main() {
 #if BENCH
 	freopen("files/poj1741_tree.txt","r",stdin);
 #endif
-	int T;
-	scanf("%d", &T);
-	for (int tc = 0; tc < T; tc++) {
-		scanf("%d", &n);
+	while (scanf("%d%d", &n, &k), n) {
 		tree.init(n);
 		REP(i,n-1) {
-			int x,y;
-			scanf("%d%d", &x, &y);
-			tree.insert(x, y);
-			tree.insert(y, x);
+			int x,y,d;
+			scanf("%d%d%d", &x, &y, &d);
+			tree.insert(x, y, d);
+			tree.insert(y, x, d);
 		}
 
-		solve();
+		solve(1);
 	}
 	return 0;
 }
