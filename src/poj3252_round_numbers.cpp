@@ -40,21 +40,63 @@ using namespace std;
 
 typedef unsigned long long Num;
 
+#if DBG
+const int maxn = 12;
+#else
 const int maxn = 128;
+#endif
 
+int digits;
 Num from, to;
-Num table[maxn + 1];		// round number with n bin digits (including 0)
+Num table[maxn + 1][2 * maxn + 1];		// round number with n bin digits (including 0)
 
-void getNum(int width, int priorZ) {
+Num getNum(int width, int zeroNum) {
 	// Find round numbers with k digits, k <= n
-
+	return table[width][digits + zeroNum];
 }
 
-Num countPrior(char bin[], int start, int digits, int zeroNum) {
+Num binomial(int n, int k) {
+	Num r = 1;
+
+	if (n - k < k)
+		k = n - k;
+
+	FOR(i,n-k+1,n)
+		r *= i;
+
+	FOR(i,1,k)
+		r /= i;
+
+	return r;
+}
+
+void makeTable(int digits) {
+	// b = bits, z = priorZeros
+	FOR(b,0,digits) {
+		int priorDigs = digits - b;
+		// zeros in prior digs
+		FOR(z,-priorDigs,priorDigs) {
+			Num r = 0;
+			// i = number of zeros in new section
+			for (int i = b; i + z >= digits - (i + z) && i + z > 0; i--)
+				r += binomial(b, i);
+			table[b][digits + z] = r;
+		}
+	}
+
+#if DBG
+	FOR(b,1,digits) {
+		cout << b << " bits: ";
+		FOR(z,-digits,digits)
+			cout << "(" << z << ")" << table[b][digits+z] << "\t";
+		cout << endl;
+	}
+#endif
+}
+
+Num countPrior(int start, int zeroNum) {
 	// make sure zeroNum + new zeros - new ones >= 0
-	// TODO - binary numbers with (digits - start - 1) digits
-	int width = digits - start - 1;
-	int res = getNum(width, zeroNum);
+	Num res = getNum(start, zeroNum);
 
 	// first one
 	if (start == digits - 1)
@@ -64,30 +106,23 @@ Num countPrior(char bin[], int start, int digits, int zeroNum) {
 }
 
 Num findRoundNumbers(Num n) {
-	// Find number of bin digits
-	int digits = 0;
-	int priors = 0;
-	Num tmp = n;
-	while (tmp) {
-		digits++;
-		tmp >>= 1;
-	}
-
 	// Convert to bin
 	char bin[maxn];
-	tmp = n;
+	Num tmp = n;
 	int i = 0;
 	while (tmp) {
 		bin[i++] = tmp & 1;
 		tmp >>= 1;
 	}
 
+	Num priors = 0;
+
 	// Split the number
 	int zeroNum = 0;
 	for (int j = i - 1; j >= 0; j--) {
 		if (bin[j] == 1) {
+			priors += countPrior(j, zeroNum);
 			zeroNum--;
-			priors += countPrior(bin, j, digits, zeroNum);
 		} else {
 			zeroNum++;
 		}
@@ -97,6 +132,17 @@ Num findRoundNumbers(Num n) {
 }
 
 Num solve() {
+	// Find number of bin digits
+	digits = 0;
+	Num tmp = to;
+	while (tmp) {
+		digits++;
+		tmp >>= 1;
+	}
+
+	// Make table
+	makeTable(digits);
+
 	return findRoundNumbers(to) - findRoundNumbers(from - 1);
 }
 
@@ -104,7 +150,6 @@ int main() {
 #if BENCH
 	freopen("files/poj3252_round_numbers.txt","r",stdin);
 #endif
-	makeTable(maxn);
 	while (~scanf("%llu%llu", &from, &to)) {
 		printf("%llu\n", solve());
 	}
