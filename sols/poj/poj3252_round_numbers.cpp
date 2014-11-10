@@ -1,6 +1,7 @@
 /*
  * POJ 3252 Round Numbers
  * For numbers in a range [a,b], find how many whose 0s >= 1s in binary form.
+ * Same as AC code but not AC'ed.
  */
 #include <algorithm>
 #include <cassert>
@@ -23,12 +24,12 @@
 using namespace std;
 
 #ifdef BENCH
-#define DBG 1 // modify this for enabling/disable debug
+#define DBG 0 // modify this for enabling/disable debug
 #else
 #define DBG 0
 #endif // BENCH
 
-#define D(...) do { if (DBG) fprintf(stderr, __VA_ARGS__); } while (0)
+#define D(...) do { if (DBG) fprintf(stdout, __VA_ARGS__); } while (0)
 
 #define CLR(x) memset(x, 0, sizeof x);
 #define CLRN(x, n) memset(x, 0, (n)*sizeof x[0]);
@@ -38,17 +39,18 @@ using namespace std;
 #define every(iter, iterable) \
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
-typedef unsigned long long Num;
+typedef long long Num;
 
 #if DBG
 const int maxn = 12;
 #else
-const int maxn = 128;
+const int maxn = 40;
 #endif
 
 int digits;
-Num from, to;
+int from, to;
 Num table[maxn + 1][2 * maxn + 1];		// round number with n bin digits (including 0)
+Num tableNLO[maxn + 1];					// round number with the form 1 followed by n bits
 
 Num getNum(int width, int zeroNum) {
 	// Find round numbers with k digits, k <= n
@@ -70,37 +72,50 @@ Num binomial(int n, int k) {
 	return r;
 }
 
-void makeTable(int digits) {
+void makeTable(int maxBits) {
 	// b = bits, z = priorZeros
-	FOR(b,0,digits) {
-		int priorDigs = digits - b;
+	FOR(bits,0,maxBits) {
+		int priorDigs = maxBits - bits;
 		// zeros in prior digs
 		FOR(z,-priorDigs,priorDigs) {
 			Num r = 0;
 			// i = number of zeros in new section
-			for (int i = b; i + z >= digits - (i + z) && i + z > 0; i--)
-				r += binomial(b, i);
-			table[b][digits + z] = r;
+			for (int i = bits; i - (bits - i) + z >= 0 && i >= 0; i--)
+				r += binomial(bits, i);
+			table[bits][maxBits + z] = r;
 		}
 	}
 
+	FOR(bits,1,maxBits) {
+		tableNLO[bits] = 0;
+		FOR(i,0,bits-1)
+			if (i >= 1 + (bits-1-i))
+				tableNLO[bits] += binomial(bits-1,i);
+	}
+
 #if DBG
-	FOR(b,1,digits) {
+	FOR(b,0,maxBits) {
 		cout << b << " bits: ";
-		FOR(z,-digits,digits)
-			cout << "(" << z << ")" << table[b][digits+z] << "\t";
+		FOR(z,-maxBits,maxBits)
+			cout << "(" << z << ")" << table[b][maxBits+z] << "\t";
 		cout << endl;
 	}
+	cout << endl;
+	FOR(b,1,maxBits)
+		cout << b << " bits: " << tableNLO[b] << endl;
 #endif
 }
 
-Num countPrior(int start, int zeroNum) {
-	// make sure zeroNum + new zeros - new ones >= 0
-	Num res = getNum(start, zeroNum);
+Num countPrior(int start, int zeroNum, bool first) {
+	Num res = 0;
+	if (first) {
+		FOR(i, 1, start)
+			res += tableNLO[i];
+	}
+	else
+		res = getNum(start, zeroNum + 1);
 
-	// first one
-	if (start == digits - 1)
-		res--;
+	D("width=%d zeroNum=%d res=%d\n", start + 1, zeroNum + 1, res);
 
 	return res;
 }
@@ -119,14 +134,19 @@ Num findRoundNumbers(Num n) {
 
 	// Split the number
 	int zeroNum = 0;
+	bool first = true;
 	for (int j = i - 1; j >= 0; j--) {
 		if (bin[j] == 1) {
-			priors += countPrior(j, zeroNum);
+			priors += countPrior(j, zeroNum, first);
 			zeroNum--;
+			first = false;
 		} else {
 			zeroNum++;
 		}
 	}
+
+	if (!bin[0] && zeroNum >= 0)
+		priors++; // the number itself
 
 	return priors;
 }
@@ -148,10 +168,10 @@ Num solve() {
 
 int main() {
 #if BENCH
-	freopen("files/poj3252_round_numbers.txt","r",stdin);
+	freopen("files/poj3252_round_numbers_test.txt","r",stdin);
 #endif
-	while (~scanf("%llu%llu", &from, &to)) {
-		printf("%llu\n", solve());
+	while (~scanf("%d%d", &from, &to)) {
+		printf("%lld\n", solve());
 	}
 	return 0;
 }
