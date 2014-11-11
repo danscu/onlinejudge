@@ -40,31 +40,28 @@ const int maxn = 12;
 int n;
 char word[maxn];
 
-Num fullLen(int l, int range) {
-	Num res = 1;
-	int r = range;
+Num C[27][27];
 
-	// not possible
-	if (range < l)
-		return 0;
-
-	FOR(i,1,l)
-		res *= r-i+1;
-
-	return res;
+Num binom(int a, int b) {
+	Num r = 1;
+	if (a - b < b) b = a - b;
+	for (int i = a; i > a - b; i--)
+		r *= i;
+	for (int i = b; i > 1; i--)
+		r /= i;
+	return r;
 }
 
-Num partial(int l, int firstRange, int range) {
-	Num res = 0;
-	FOR(i,0,firstRange) {
-		int sub = 1;
-		int r = range - i - 1;
-		FOR(j,2,l)
-			sub *= r--;
-		res += sub;
-	}
+void makeTable() {
+	REP(i,27)
+		REP(j,27)
+			C[i][j] = binom(i,j);
+}
 
-	return res;
+Num getBinom(int a, int b) {
+	if (b < 0 || b > a)
+		return 0;
+	return C[a][b];
 }
 
 Num solve() {
@@ -72,26 +69,18 @@ Num solve() {
 	Num idx = 0;
 
 	FOR(i,1,len - 1) {
-		idx += fullLen(i, 26);
-		D("full_len %d %d --> %d\n", i, fullLen(i, 26), idx);
+		idx += getBinom(26, i);
+		D("full_len %d %d --> %d\n", i, getBinom(26, i), idx);
 	}
 
-	int prior = 0;
 	REP(i,len) {
 		int c = word[i] - 'a';
-		if (i >= 1 && c <= prior)
-			return 0; // error
-		idx += partial(len - i, c - 1 - prior,
-				26 - c + 1 - prior);
-
-		D("partial %d %d %d --> %d\n", len -i,
-				c - 1 - prior,
-				26 - c + 1 - prior,
-				partial(len - i, c - 1 - prior,
-								26 - c + 1 - prior),
-								idx);
-
-		prior = c;
+		FOR(j, 0, c - 1) {
+			idx += getBinom(26 - j - 1, len - i - 2);
+			D("partial a=%d b=%d binom=%d --> %d\n", 26 - j - 1, len - i - 2,
+					getBinom(26 - j - 1, len - i - 2),
+					idx);
+		}
 	}
 
 	return idx;
@@ -101,6 +90,7 @@ int main() {
 #if BENCH
 	freopen("files/poj1850_code.txt","r",stdin);
 #endif
+	makeTable();
 	while (~scanf("%s", word)) {
 		printf("%d\n", solve());
 	}
