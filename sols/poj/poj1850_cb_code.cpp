@@ -1,3 +1,6 @@
+/* POJ 1850/1496
+ * Find the index of sequence
+ */
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
