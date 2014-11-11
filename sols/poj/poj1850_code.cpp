@@ -19,7 +19,7 @@
 using namespace std;
 
 #ifdef BENCH
-#define DBG 1 // modify this for enabling/disable debug
+#define DBG 0 // modify this for enabling/disable debug
 #else
 #define DBG 0
 #endif // BENCH
@@ -34,7 +34,7 @@ using namespace std;
 #define every(iter, iterable) \
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
-typedef int Num;
+typedef long long Num;
 const int maxn = 12;
 
 int n;
@@ -73,15 +73,23 @@ Num solve() {
 		D("full_len %d %d --> %d\n", i, getBinom(26, i), idx);
 	}
 
+	int prior = 0;
 	REP(i,len) {
 		int c = word[i] - 'a';
-		FOR(j, 0, c - 1) {
-			idx += getBinom(26 - j - 1, len - i - 2);
-			D("partial a=%d b=%d binom=%d --> %d\n", 26 - j - 1, len - i - 2,
-					getBinom(26 - j - 1, len - i - 2),
+		if (c < prior)
+			return 0; // err
+		FOR(j, prior, c - 1) {
+			idx += getBinom(26 - j - 1, len - i - 1);
+			D("partial j=%d from=%d choose=%d binom=%d --> %d\n",
+					j,
+					26 - j - 1, len - i - 1,
+					getBinom(26 - j - 1, len - i - 1),
 					idx);
 		}
+		prior = c + 1;
 	}
+
+	idx++;
 
 	return idx;
 }
@@ -92,7 +100,7 @@ int main() {
 #endif
 	makeTable();
 	while (~scanf("%s", word)) {
-		printf("%d\n", solve());
+		printf("%lld\n", solve());
 	}
 	return 0;
 }
