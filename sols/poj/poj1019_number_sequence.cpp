@@ -19,7 +19,7 @@
 using namespace std;
 
 #ifdef BENCH
-#define DBG 1 // modify this for enabling/disable debug
+#define DBG 0 // modify this for enabling/disable debug
 #else
 #define DBG 0
 #endif // BENCH
@@ -34,53 +34,60 @@ using namespace std;
 #define every(iter, iterable) \
 	typeof((iterable).begin()) iter = (iterable).begin(); iter != (iterable).end(); iter++
 
-typedef long Num;
+typedef int Num;
 
 Num n;
 
-const int maxL = 9;
+#if DBG
+const int maxL = 20;
+#else
+const int maxL = 31267;
+#endif
 
-// S[D] Total length of numbers with 1 thru D+1 digits
-// S[D] = 9*10^D*(D+1)
-Num S[maxL];
-
-// Length of cumulative string section with D+1 digits
-Num L[maxL];
+Num L[maxL+1];
 
 void makeTable() {
-	Num tenPow = 1;
-	FOR(i,0,maxL-1) {
-		// For S
-		Num s = 9 * tenPow * (i + 1);
-		S[i] = s;
+	Num len = 0;
+	Num tlen = 0;
+	int wlen = 0;
+	Num wLevel = 1;
 
-		// For L
-		L[i] = ((i + 1) + (i + 1) * 9 * tenPow) * (9 * tenPow) / 2;
-		D("S[%d] = %lld\tL[%d] = %lld\n", i, S[i], i, L[i]);
-
-		tenPow *= 10;
+	FOR(i,1,maxL) {
+		if (i == wLevel) {
+			wLevel *= 10;
+			wlen++;
+		}
+		len += wlen;
+		tlen += len;
+		L[i] = tlen;
+		D("L[%d] = %lld\n", i, L[i]);
 	}
 }
 
-Num solve() {
-	makeTable();
-
-	int d = 0;
-	int remain = n;
-
-	D("n=%d\n", n);
-
-	// Determine D
-	while (remain >= L[d]) {
-		remain -= L[d];
-		d++;
+char solve() {
+	D("n=%d\n",n);
+	int nseq = 1;
+	while (nseq <= maxL && n > L[nseq])
+		nseq++;
+	// L[nseq] contains the nth char
+	D("seq# = %d, remaining n = %d\n", nseq, L[nseq] - n);
+	n = n - L[nseq-1];
+	Num i, wLevel = 1;
+	int wlen = 0;
+	for (i = 1;; i++) {
+		if (i == wLevel) {
+			wLevel *= 10;
+			wlen++;
+		}
+		if (n <= wlen)
+			break;
+		n -= wlen;
 	}
-
-	D("d=%d remain=%d\n", d, remain);
-
-	// Digits from 10^d
-
-	return 0;
+	D("number = %d\n", i);
+	// i is the number
+	ostringstream oss;
+	oss << i;
+	return oss.str()[n-1];
 }
 
 int main() {
@@ -88,10 +95,11 @@ int main() {
 	freopen("files/poj1019_number_sequence.txt","r",stdin);
 #endif
 	int T;
+	makeTable();
 	scanf("%d", &T);
 	for (int tc = 0; tc < T; tc++) {
 		scanf("%d", &n);
-		printf("%d\n", solve());
+		printf("%c\n", solve());
 	}
 	return 0;
 }
