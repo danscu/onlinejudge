@@ -1,3 +1,8 @@
+/*
+ * POJ 1019 Number sequence
+ * Combinatorics
+ * Find digit at ith position of a long sequence
+ */
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
