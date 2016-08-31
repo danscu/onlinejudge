@@ -1,0 +1,6 @@
+#!/usr/bin/python
+
+fin = open('input.txt')
+while line = fin.readline()
+  print line
+
